@@ -4,7 +4,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from itertools import product as _prod
-from foundations import _row_minmax
+from foundations import _row_minmax, RANDOM_SEED
 
 # ── Beam / grid parameters ────────────────────────────────────────────────────
 _SLIT_X      = np.array([-0.05, -0.015, 0.015, 0.05])
@@ -39,6 +39,15 @@ def _simulate_row(open_slits, phase_combo):
     )
     return np.abs(field)**2
 
+def _add_poisson_noise(mat, N_eff, rng):
+    """Scale rows to sum to N_eff counts, sample Poisson, normalise back."""
+    row_sums = mat.sum(axis=1, keepdims=True)
+    row_sums[row_sums == 0] = 1.0
+    prob = mat / row_sums                        # row-normalised probabilities
+    counts = rng.poisson(prob * N_eff)           # sample shot noise
+    noisy = counts / N_eff                       # back to probability scale
+    return _row_minmax(noisy)
+
 def build_simulation_data():
     """Build simulated (experimental-mimicking) intensity matrices."""
     mats, lbls, mats_N = {}, {}, {}
@@ -61,8 +70,14 @@ def build_simulation_data():
         mats_N[n_open] = 1000.0
     return mats, lbls, mats_N
 
-def build_theory_data():
-    """Build theoretical intensity matrices."""
+def build_theory_data(add_noise=True, N_eff=1000):
+    """Build theoretical intensity matrices.
+    
+    add_noise : if True, add Poisson shot noise scaled to N_eff counts per row.
+                This introduces a genuine overfitting regime in the rank sweep.
+    N_eff     : effective photon count per setting (controls noise level).
+    """
+    rng = np.random.default_rng(RANDOM_SEED)
     theory_mats, theory_lbls = {}, {}
     for n_open in [1, 2, 3, 4]:
         rows, row_labels = [], []
@@ -79,7 +94,11 @@ def build_theory_data():
                 )
                 rows.append(np.abs(field)**2)
                 row_labels.append(f'{sl} | {_build_phase_label(open_slits, phase_combo)}')
-        theory_mats[n_open] = _row_minmax(np.array(rows))
+        exact = np.array(rows)
+        if add_noise:
+            theory_mats[n_open] = _add_poisson_noise(exact, N_eff, rng)
+        else:
+            theory_mats[n_open] = _row_minmax(exact)
         theory_lbls[n_open] = row_labels
     return theory_mats, theory_lbls
 
@@ -99,7 +118,7 @@ def plot_data(mats, lbls, title_suffix):
         lbl = lbls[n_open]
         im  = ax.imshow(mat, aspect='auto', origin='lower',
                         cmap='magma', vmin=0, vmax=1)
-        ax.set_title(f'{n_open} slit(s) open  [{mat.shape[0]} settings × {mat.shape[1]} px]',
+        ax.set_title(f'{n_open} slit(s) open  [{mat.shape[0]} settings \u00d7 {mat.shape[1]} px]',
                      fontsize=16)
         ax.set_xlabel('pixel index', fontsize=13)
         ax.set_ylabel('setting', fontsize=13)
@@ -113,7 +132,7 @@ def plot_data(mats, lbls, title_suffix):
 
 if __name__ == '__main__':
     mats, lbls, mats_N       = build_simulation_data()
-    theory_mats, theory_lbls = build_theory_data()
+    theory_mats, theory_lbls = build_theory_data(add_noise=True, N_eff=1000)
     print_summary(mats, theory_mats, mats_N)
     plot_data(mats, lbls, 'Simulation data')
-    plot_data(theory_mats, theory_lbls, 'Theoretical data')
+    plot_data(theory_mats, theory_lbls, 'Theoretical data (+ Poisson noise)')
