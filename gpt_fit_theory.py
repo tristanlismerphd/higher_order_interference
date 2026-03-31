@@ -1,19 +1,21 @@
 # ============================================================
 #  GPT rank sweep — THEORETICAL  (K=1-20, 10-fold CV, Poisson errors)
+#  Parallelised over (K, fold) combinations using joblib
 # ============================================================
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+from joblib import Parallel, delayed
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from foundations import als_fit, RANDOM_SEED, ALS_REG
 from data import build_simulation_data, build_theory_data
 
 # ── Sweep parameters ─────────────────────────────────────────────────────────
-_K_RANGE   = range(1, 21)
-_N_FOLDS   = 10
-_N_REST    = 4
-P_FLOOR    = 0.01
-N_PX_SWEEP = 150
+_K_RANGE       = range(1, 21)
+_N_FOLDS       = 10
+_N_REST        = 4
+P_FLOOR        = 0.01
+N_PX_SWEEP     = 150
 _INSET_K_START = 8
 
 def _poisson_sigma(prob_mat, N_eff):
@@ -27,8 +29,20 @@ def _resample_cols(mat, n_out):
     x_out = np.linspace(0, 1, n_out)
     return np.array([np.interp(x_out, x_in, row) for row in mat])
 
-def run_rank_sweep(data_mat, N_eff, label=''):
-    """10-fold CV rank sweep. Returns {K: {'train':[...], 'test':[...]}}"""
+def _fit_one(data_mat, sigma, fold_ids, K, f, sweep_reg):
+    """Run ALS for a single (K, fold) combination."""
+    train_mask = (fold_ids != f)
+    _, _, tr, te = als_fit(
+        data_mat, sigma, train_mask, K=K,
+        n_restarts=_N_REST, reg=sweep_reg,
+        rng=np.random.default_rng(RANDOM_SEED + K * 100 + f)
+    )
+    return K, f, tr, te
+
+def run_rank_sweep(data_mat, N_eff, label='', n_jobs=-1):
+    """10-fold CV rank sweep, parallelised over all (K, fold) combos.
+    n_jobs=-1 uses all available CPU cores.
+    """
     data_mat   = _resample_cols(data_mat, N_PX_SWEEP)
     n_s, n_pix = data_mat.shape
     sigma      = _poisson_sigma(data_mat, N_eff)
@@ -40,21 +54,26 @@ def run_rank_sweep(data_mat, N_eff, label=''):
     for f in range(_N_FOLDS):
         fold_ids[perm[f::_N_FOLDS]] = f
     fold_ids = fold_ids.reshape(n_s, n_pix)
-    results = {K: {'train': [], 'test': []} for K in _K_RANGE}
+
     print(f'\n── {label}  ({n_s}×{n_pix},  N_eff={N_eff:.1f},  reg={sweep_reg:.2e}) ──')
+    print(f'   Running {len(list(_K_RANGE)) * _N_FOLDS} jobs in parallel (n_jobs={n_jobs})...')
+
+    t0 = time.time()
+    jobs = [(K, f) for K in _K_RANGE for f in range(_N_FOLDS)]
+    flat = Parallel(n_jobs=n_jobs)(
+        delayed(_fit_one)(data_mat, sigma, fold_ids, K, f, sweep_reg)
+        for K, f in jobs
+    )
+    print(f'   Done in {time.time() - t0:.1f}s')
+
+    results = {K: {'train': [], 'test': []} for K in _K_RANGE}
+    for K, f, tr, te in flat:
+        results[K]['train'].append(tr)
+        results[K]['test'].append(te)
+
     for K in _K_RANGE:
-        t0 = time.time()
-        for f in range(_N_FOLDS):
-            train_mask = (fold_ids != f)
-            _, _, tr, te = als_fit(
-                data_mat, sigma, train_mask, K=K,
-                n_restarts=_N_REST, reg=sweep_reg,
-                rng=np.random.default_rng(RANDOM_SEED + K * 100 + f)
-            )
-            results[K]['train'].append(tr)
-            results[K]['test'].append(te)
         print(f'  K={K:>2}  train={np.mean(results[K]["train"]):.4f}  '
-              f'test={np.mean(results[K]["test"]):.4f}  [{time.time()-t0:.1f}s]')
+              f'test={np.mean(results[K]["test"]):.4f}')
     return results
 
 def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
@@ -114,8 +133,8 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
 
 
 if __name__ == '__main__':
-    _, _, mats_N       = build_simulation_data()
-    theory_mats, _     = build_theory_data()
+    _, _, mats_N   = build_simulation_data()
+    theory_mats, _ = build_theory_data()
 
     th_cv = {}
     for n_open in [1, 2, 3, 4]:
