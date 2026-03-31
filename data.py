@@ -6,12 +6,14 @@ import matplotlib.pyplot as plt
 from itertools import product as _prod
 from foundations import _row_minmax, RANDOM_SEED
 
-# ── Beam / grid parameters ────────────────────────────────────────────────────
-_SLIT_X      = np.array([-0.05, -0.015, 0.015, 0.05])
-_BEAM_RADIUS = 0.5
+# ── Beam / grid parameters ───────────────────────────────────────────────────
+# Slits are well-separated relative to beam radius so each single-slit
+# pattern is spatially distinct → rank-4 structure for 1-slit case.
+_SLIT_X      = np.array([-1.5, -0.5, 0.5, 1.5])
+_BEAM_RADIUS = 0.35
 _KX_LIST     = [-20, -10, 10, 20]
-_NUM_PIXELS  = 150
-_x_grid      = np.linspace(-1, 1, _NUM_PIXELS)
+_NUM_PIXELS  = 500
+_x_grid      = np.linspace(-3, 3, _NUM_PIXELS)
 
 # ── Shutter labels (O=open, X=closed) ────────────────────────────────────────
 shutter_labels = [
@@ -68,8 +70,6 @@ def build_theory_data(add_noise=True, N_eff=50000):
                 Data is returned as row-normalised probabilities so that the
                 ALS sigma model (sqrt(p/N_eff)) is consistent with the noise.
     N_eff     : effective photon count per setting row (controls noise level).
-                50000 gives ~333 counts/pixel — enough noise for a clear
-                overfitting upturn without drowning the signal.
     """
     rng = np.random.default_rng(RANDOM_SEED)
     theory_mats, theory_lbls = {}, {}
@@ -89,17 +89,14 @@ def build_theory_data(add_noise=True, N_eff=50000):
                 rows.append(np.abs(field)**2)
                 row_labels.append(f'{sl} | {_build_phase_label(open_slits, phase_combo)}')
 
-        exact = np.array(rows)                          # exact intensities
+        exact    = np.array(rows)
         row_sums = exact.sum(axis=1, keepdims=True)
         row_sums[row_sums == 0] = 1.0
-        prob = exact / row_sums                         # row-normalised probabilities
+        prob     = exact / row_sums
 
         if add_noise:
-            counts = rng.poisson(prob * N_eff)          # Poisson shot noise
-            noisy_prob = counts / N_eff                 # back to probability scale
-            # ensure no zeros (needed for sigma floor)
-            noisy_prob = np.maximum(noisy_prob, 0.0)
-            theory_mats[n_open] = noisy_prob            # keep as probs (not row-minmax)
+            counts = rng.poisson(prob * N_eff)
+            theory_mats[n_open] = np.maximum(counts / N_eff, 0.0)
         else:
             theory_mats[n_open] = _row_minmax(exact)
 
@@ -121,21 +118,21 @@ def plot_data(mats, lbls, title_suffix):
         mat = mats[n_open]
         lbl = lbls[n_open]
         im  = ax.imshow(mat, aspect='auto', origin='lower',
-                        cmap='magma', vmin=0, vmax=1)
-        ax.set_title(f'{n_open} slit(s) open  [{mat.shape[0]} settings \u00d7 {mat.shape[1]} px]',
+                        cmap='magma', vmin=0, vmax=mat.max())
+        ax.set_title(f'{n_open} slit(s) open  [{mat.shape[0]} settings × {mat.shape[1]} px]',
                      fontsize=16)
         ax.set_xlabel('pixel index', fontsize=13)
         ax.set_ylabel('setting', fontsize=13)
         ax.set_yticks(np.arange(len(lbl)))
         ax.set_yticklabels(lbl, fontsize=7)
-        fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, label='row-norm. intensity')
-    plt.suptitle(f'{title_suffix}  |  phases: {{0, \u03c0/2, \u03c0}} (open slits only)',
+        fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, label='intensity')
+    plt.suptitle(f'{title_suffix}  |  phases: {{0, π/2, π}} (open slits only)',
                  fontsize=16, y=1.002)
     plt.show()
 
 
 if __name__ == '__main__':
-    mats, lbls, mats_N               = build_simulation_data()
+    mats, lbls, mats_N                = build_simulation_data()
     theory_mats, theory_lbls, th_Neff = build_theory_data(add_noise=True)
     print_summary(mats, theory_mats, mats_N, th_Neff)
     plot_data(mats, lbls, 'Simulation data')

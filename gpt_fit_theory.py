@@ -1,5 +1,5 @@
 # ============================================================
-#  GPT rank sweep — THEORETICAL  (K=1-20, 10-fold CV, Poisson errors)
+#  GPT rank sweep — THEORETICAL  (K=1-25, 10-fold CV, Poisson errors)
 #  Parallelised over (K, fold) combinations using joblib
 # ============================================================
 import numpy as np
@@ -10,13 +10,16 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from foundations import als_fit, RANDOM_SEED, ALS_REG
 from data import build_simulation_data, build_theory_data
 
-# ── Sweep parameters ─────────────────────────────────────────────────────────
-_K_RANGE       = range(1, 21)
-_N_FOLDS       = 10
-_N_REST        = 4
-P_FLOOR        = 0.01
-N_PX_SWEEP     = 150
-_INSET_K_START = 9
+# ── Sweep parameters ──────────────────────────────────────────────────────────
+_K_RANGE   = range(1, 26)     # up to 25 to capture 4-slit rank=16
+_N_FOLDS   = 10
+_N_REST    = 4
+P_FLOOR    = 0.01
+N_PX_SWEEP = 500
+
+# Inset starts at the expected true rank for each slit count (n²)
+# 1-slit→4, 2-slit→4, 3-slit→9, 4-slit→16
+_INSET_K_START = {1: 4, 2: 4, 3: 9, 4: 16}
 
 def _poisson_sigma(prob_mat, N_eff):
     return np.sqrt(np.maximum(prob_mat, P_FLOOR)) / np.sqrt(N_eff)
@@ -40,9 +43,7 @@ def _fit_one(data_mat, sigma, fold_ids, K, f, sweep_reg):
     return K, f, tr, te
 
 def run_rank_sweep(data_mat, N_eff, label='', n_jobs=-1):
-    """10-fold CV rank sweep, parallelised over all (K, fold) combos.
-    n_jobs=-1 uses all available CPU cores.
-    """
+    """10-fold CV rank sweep, parallelised over all (K, fold) combos."""
     data_mat   = _resample_cols(data_mat, N_PX_SWEEP)
     n_s, n_pix = data_mat.shape
     sigma      = _poisson_sigma(data_mat, N_eff)
@@ -58,7 +59,7 @@ def run_rank_sweep(data_mat, N_eff, label='', n_jobs=-1):
     print(f'\n── {label}  ({n_s}×{n_pix},  N_eff={N_eff:.1f},  reg={sweep_reg:.2e}) ──')
     print(f'   Running {len(list(_K_RANGE)) * _N_FOLDS} jobs in parallel (n_jobs={n_jobs})...')
 
-    t0 = time.time()
+    t0   = time.time()
     jobs = [(K, f) for K in _K_RANGE for f in range(_N_FOLDS)]
     flat = Parallel(n_jobs=n_jobs)(
         delayed(_fit_one)(data_mat, sigma, fold_ids, K, f, sweep_reg)
@@ -81,29 +82,29 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
     x_pos = np.arange(len(ks))
     width = 0.38
 
-    # 2 rows: top = intensity matrix, bottom = rank sweep bar chart
     fig, axes = plt.subplots(2, 4, figsize=(28, 10),
                              gridspec_kw={'height_ratios': [1, 2]})
     fig.subplots_adjust(wspace=0.38, hspace=0.35)
 
     for col, n_open in enumerate([1, 2, 3, 4]):
-        mat = mat_dict[n_open]
+        mat   = mat_dict[n_open]
         N_eff = mats_N[n_open]
+        k_ins = _INSET_K_START[n_open]
 
-        # ── Top row: intensity matrix ─────────────────────────────────
+        # ── Top row: intensity matrix ────────────────────────────────────────
         ax_img = axes[0, col]
         im = ax_img.imshow(mat, aspect='auto', origin='lower',
                            cmap='magma', vmin=0, vmax=mat.max())
         ax_img.set_title(f'{panel_prefix}  |  {n_open}-slit\n'
-                         f'{mat.shape[0]} settings \u00d7 {mat.shape[1]} px',
+                         f'{mat.shape[0]} settings × {mat.shape[1]} px  '
+                         f'(expected rank={n_open**2})',
                          fontsize=10)
         ax_img.set_xlabel('pixel index', fontsize=9)
         ax_img.set_ylabel('setting index', fontsize=9)
         ax_img.tick_params(labelsize=7)
-        fig.colorbar(im, ax=ax_img, fraction=0.035, pad=0.03,
-                     label='intensity')
+        fig.colorbar(im, ax=ax_img, fraction=0.035, pad=0.03, label='intensity')
 
-        # ── Bottom row: rank sweep bar chart ──────────────────────────
+        # ── Bottom row: rank sweep ───────────────────────────────────────────
         ax = axes[1, col]
         tr_means = [np.mean(cv_dict[n_open][K]['train']) for K in ks]
         tr_stds  = [np.std(cv_dict[n_open][K]['train'])  for K in ks]
@@ -115,16 +116,17 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         ax.bar(x_pos + width/2, te_means, width, yerr=te_stds, capsize=3,
                color='tomato',    alpha=0.85, ecolor='darkred', label='Test')
         ax.axhline(1.0, color='gray', linestyle='--', linewidth=1)
+        ax.axvline(n_open**2 - 1, color='green', linestyle=':', linewidth=1.2,
+                   label=f'Expected rank={n_open**2}')
         ax.set_xticks(x_pos)
         ax.set_xticklabels([str(k) for k in ks], fontsize=7, rotation=45)
         ax.set_xlabel('GPT rank K', fontsize=10)
-        ax.set_ylabel('\u03c7\u00b2/pt', fontsize=10)
+        ax.set_ylabel('χ²/pt', fontsize=10)
         ax.set_title(f'N_eff={N_eff:.0f}', fontsize=10)
-        if col == 0:
-            ax.legend(fontsize=8)
+        ax.legend(fontsize=7)
 
-        # ── Inset: K >= _INSET_K_START ──────────────────────────────
-        inset_idx  = [i for i, k in enumerate(ks) if k >= _INSET_K_START]
+        # ── Inset: K >= expected rank ────────────────────────────────────────
+        inset_idx  = [i for i, k in enumerate(ks) if k >= k_ins]
         inset_ks   = [ks[i] for i in inset_idx]
         inset_xpos = np.arange(len(inset_ks))
         axins = inset_axes(ax, width='48%', height='45%', loc='upper right', borderpad=0.8)
@@ -139,7 +141,7 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         axins.set_xticklabels([str(k) for k in inset_ks], fontsize=6, rotation=45)
         axins.tick_params(axis='y', labelsize=6)
         axins.set_xlabel('K', fontsize=7)
-        axins.set_title(f'K \u2265 {_INSET_K_START}', fontsize=7, pad=2)
+        axins.set_title(f'K ≥ {k_ins}', fontsize=7, pad=2)
         inset_vals = (
             [tr_means[i] - tr_stds[i] for i in inset_idx] +
             [te_means[i] - te_stds[i] for i in inset_idx] +
@@ -169,8 +171,8 @@ if __name__ == '__main__':
     plot_sweep(
         th_cv, theory_mats, theory_mats_N,
         suptitle=(f'Theoretical GPT rank sweep  |  {_N_FOLDS}-fold CV  |  '
-                  f'Poisson noise  N_eff={theory_N_eff}  |  phases: {{0, \u03c0/2, \u03c0}}\n'
-                  f'{N_PX_SWEEP} pixels  |  Dashed: \u03c7\u00b2/pt = 1  |  '
-                  f'Inset: K \u2265 {_INSET_K_START}'),
+                  f'Poisson noise  N_eff={theory_N_eff}  |  phases: {{0, π/2, π}}\n'
+                  f'{N_PX_SWEEP} pixels  |  Dashed: χ²/pt = 1  |  '
+                  f'Inset: K ≥ expected rank  |  Green: expected rank'),
         panel_prefix='Theory',
     )
