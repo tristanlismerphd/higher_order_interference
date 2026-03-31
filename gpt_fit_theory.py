@@ -88,19 +88,20 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
 
     for col, n_open in enumerate([1, 2, 3, 4]):
         mat = mat_dict[n_open]
+        N_eff = mats_N[n_open]
 
         # ── Top row: intensity matrix ─────────────────────────────────
         ax_img = axes[0, col]
         im = ax_img.imshow(mat, aspect='auto', origin='lower',
-                           cmap='magma', vmin=0, vmax=1)
+                           cmap='magma', vmin=0, vmax=mat.max())
         ax_img.set_title(f'{panel_prefix}  |  {n_open}-slit\n'
-                         f'{mat.shape[0]} settings × {mat.shape[1]} px',
+                         f'{mat.shape[0]} settings \u00d7 {mat.shape[1]} px',
                          fontsize=10)
         ax_img.set_xlabel('pixel index', fontsize=9)
         ax_img.set_ylabel('setting index', fontsize=9)
         ax_img.tick_params(labelsize=7)
         fig.colorbar(im, ax=ax_img, fraction=0.035, pad=0.03,
-                     label='row-norm. intensity')
+                     label='intensity')
 
         # ── Bottom row: rank sweep bar chart ──────────────────────────
         ax = axes[1, col]
@@ -118,7 +119,7 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         ax.set_xticklabels([str(k) for k in ks], fontsize=7, rotation=45)
         ax.set_xlabel('GPT rank K', fontsize=10)
         ax.set_ylabel('\u03c7\u00b2/pt', fontsize=10)
-        ax.set_title(f'N_eff={mats_N[n_open]:.0f}', fontsize=10)
+        ax.set_title(f'N_eff={N_eff:.0f}', fontsize=10)
         if col == 0:
             ax.legend(fontsize=8)
 
@@ -154,20 +155,21 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
 
 
 if __name__ == '__main__':
-    _, _, mats_N   = build_simulation_data()
-    theory_mats, _ = build_theory_data()
+    _, _, mats_N                      = build_simulation_data()
+    theory_mats, _, theory_N_eff      = build_theory_data(add_noise=True)
+    theory_mats_N = {n: theory_N_eff for n in [1, 2, 3, 4]}
 
     th_cv = {}
     for n_open in [1, 2, 3, 4]:
         th_cv[n_open] = run_rank_sweep(
-            theory_mats[n_open], N_eff=mats_N[n_open],
+            theory_mats[n_open], N_eff=theory_N_eff,
             label=f'Theory  {n_open}-slit'
         )
 
     plot_sweep(
-        th_cv, theory_mats, mats_N,
+        th_cv, theory_mats, theory_mats_N,
         suptitle=(f'Theoretical GPT rank sweep  |  {_N_FOLDS}-fold CV  |  '
-                  f'Poisson errors  |  phases: {{0, \u03c0/2, \u03c0}}\n'
+                  f'Poisson noise  N_eff={theory_N_eff}  |  phases: {{0, \u03c0/2, \u03c0}}\n'
                   f'{N_PX_SWEEP} pixels  |  Dashed: \u03c7\u00b2/pt = 1  |  '
                   f'Inset: K \u2265 {_INSET_K_START}'),
         panel_prefix='Theory',

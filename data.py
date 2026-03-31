@@ -39,15 +39,6 @@ def _simulate_row(open_slits, phase_combo):
     )
     return np.abs(field)**2
 
-def _add_poisson_noise(mat, N_eff, rng):
-    """Scale rows to sum to N_eff counts, sample Poisson, normalise back."""
-    row_sums = mat.sum(axis=1, keepdims=True)
-    row_sums[row_sums == 0] = 1.0
-    prob = mat / row_sums                        # row-normalised probabilities
-    counts = rng.poisson(prob * N_eff)           # sample shot noise
-    noisy = counts / N_eff                       # back to probability scale
-    return _row_minmax(noisy)
-
 def build_simulation_data():
     """Build simulated (experimental-mimicking) intensity matrices."""
     mats, lbls, mats_N = {}, {}, {}
@@ -70,12 +61,15 @@ def build_simulation_data():
         mats_N[n_open] = 1000.0
     return mats, lbls, mats_N
 
-def build_theory_data(add_noise=True, N_eff=1000):
+def build_theory_data(add_noise=True, N_eff=50000):
     """Build theoretical intensity matrices.
-    
+
     add_noise : if True, add Poisson shot noise scaled to N_eff counts per row.
-                This introduces a genuine overfitting regime in the rank sweep.
-    N_eff     : effective photon count per setting (controls noise level).
+                Data is returned as row-normalised probabilities so that the
+                ALS sigma model (sqrt(p/N_eff)) is consistent with the noise.
+    N_eff     : effective photon count per setting row (controls noise level).
+                50000 gives ~333 counts/pixel — enough noise for a clear
+                overfitting upturn without drowning the signal.
     """
     rng = np.random.default_rng(RANDOM_SEED)
     theory_mats, theory_lbls = {}, {}
@@ -94,19 +88,29 @@ def build_theory_data(add_noise=True, N_eff=1000):
                 )
                 rows.append(np.abs(field)**2)
                 row_labels.append(f'{sl} | {_build_phase_label(open_slits, phase_combo)}')
-        exact = np.array(rows)
+
+        exact = np.array(rows)                          # exact intensities
+        row_sums = exact.sum(axis=1, keepdims=True)
+        row_sums[row_sums == 0] = 1.0
+        prob = exact / row_sums                         # row-normalised probabilities
+
         if add_noise:
-            theory_mats[n_open] = _add_poisson_noise(exact, N_eff, rng)
+            counts = rng.poisson(prob * N_eff)          # Poisson shot noise
+            noisy_prob = counts / N_eff                 # back to probability scale
+            # ensure no zeros (needed for sigma floor)
+            noisy_prob = np.maximum(noisy_prob, 0.0)
+            theory_mats[n_open] = noisy_prob            # keep as probs (not row-minmax)
         else:
             theory_mats[n_open] = _row_minmax(exact)
-        theory_lbls[n_open] = row_labels
-    return theory_mats, theory_lbls
 
-def print_summary(mats, theory_mats, mats_N):
+        theory_lbls[n_open] = row_labels
+    return theory_mats, theory_lbls, N_eff
+
+def print_summary(mats, theory_mats, mats_N, theory_N_eff):
     print('\n=== Simulation data ===')
     for n_open in [1, 2, 3, 4]:
         print(f'  {n_open}-slit: {mats[n_open].shape}  N_eff={mats_N[n_open]:.0f}')
-    print('\n=== Theory data ===')
+    print(f'\n=== Theory data (N_eff={theory_N_eff}) ===')
     for n_open in [1, 2, 3, 4]:
         print(f'  {n_open}-slit: {theory_mats[n_open].shape}')
 
@@ -131,8 +135,8 @@ def plot_data(mats, lbls, title_suffix):
 
 
 if __name__ == '__main__':
-    mats, lbls, mats_N       = build_simulation_data()
-    theory_mats, theory_lbls = build_theory_data(add_noise=True, N_eff=1000)
-    print_summary(mats, theory_mats, mats_N)
+    mats, lbls, mats_N               = build_simulation_data()
+    theory_mats, theory_lbls, th_Neff = build_theory_data(add_noise=True)
+    print_summary(mats, theory_mats, mats_N, th_Neff)
     plot_data(mats, lbls, 'Simulation data')
-    plot_data(theory_mats, theory_lbls, 'Theoretical data (+ Poisson noise)')
+    plot_data(theory_mats, theory_lbls, f'Theoretical data (Poisson noise, N_eff={th_Neff})')
