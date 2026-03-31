@@ -16,7 +16,7 @@ _N_FOLDS       = 10
 _N_REST        = 4
 P_FLOOR        = 0.01
 N_PX_SWEEP     = 150
-_INSET_K_START = 8
+_INSET_K_START = 9
 
 def _poisson_sigma(prob_mat, N_eff):
     return np.sqrt(np.maximum(prob_mat, P_FLOOR)) / np.sqrt(N_eff)
@@ -80,14 +80,35 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
     ks    = list(_K_RANGE)
     x_pos = np.arange(len(ks))
     width = 0.38
-    fig, axes = plt.subplots(1, 4, figsize=(28, 6))
-    fig.subplots_adjust(wspace=0.38)
+
+    # 2 rows: top = intensity matrix, bottom = rank sweep bar chart
+    fig, axes = plt.subplots(2, 4, figsize=(28, 10),
+                             gridspec_kw={'height_ratios': [1, 2]})
+    fig.subplots_adjust(wspace=0.38, hspace=0.35)
+
     for col, n_open in enumerate([1, 2, 3, 4]):
-        ax = axes[col]
+        mat = mat_dict[n_open]
+
+        # ── Top row: intensity matrix ─────────────────────────────────
+        ax_img = axes[0, col]
+        im = ax_img.imshow(mat, aspect='auto', origin='lower',
+                           cmap='magma', vmin=0, vmax=1)
+        ax_img.set_title(f'{panel_prefix}  |  {n_open}-slit\n'
+                         f'{mat.shape[0]} settings × {mat.shape[1]} px',
+                         fontsize=10)
+        ax_img.set_xlabel('pixel index', fontsize=9)
+        ax_img.set_ylabel('setting index', fontsize=9)
+        ax_img.tick_params(labelsize=7)
+        fig.colorbar(im, ax=ax_img, fraction=0.035, pad=0.03,
+                     label='row-norm. intensity')
+
+        # ── Bottom row: rank sweep bar chart ──────────────────────────
+        ax = axes[1, col]
         tr_means = [np.mean(cv_dict[n_open][K]['train']) for K in ks]
         tr_stds  = [np.std(cv_dict[n_open][K]['train'])  for K in ks]
         te_means = [np.mean(cv_dict[n_open][K]['test'])  for K in ks]
         te_stds  = [np.std(cv_dict[n_open][K]['test'])   for K in ks]
+
         ax.bar(x_pos - width/2, tr_means, width, yerr=tr_stds, capsize=3,
                color='steelblue', alpha=0.85, ecolor='navy', label='Train')
         ax.bar(x_pos + width/2, te_means, width, yerr=te_stds, capsize=3,
@@ -97,11 +118,10 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         ax.set_xticklabels([str(k) for k in ks], fontsize=7, rotation=45)
         ax.set_xlabel('GPT rank K', fontsize=10)
         ax.set_ylabel('\u03c7\u00b2/pt', fontsize=10)
-        ax.set_title(f'{panel_prefix}  |  {n_open}-slit\n'
-                     f'N_eff={mats_N[n_open]:.0f}  |  {mat_dict[n_open].shape[0]} settings',
-                     fontsize=10)
+        ax.set_title(f'N_eff={mats_N[n_open]:.0f}', fontsize=10)
         if col == 0:
             ax.legend(fontsize=8)
+
         # ── Inset: K >= _INSET_K_START ──────────────────────────────
         inset_idx  = [i for i, k in enumerate(ks) if k >= _INSET_K_START]
         inset_ks   = [ks[i] for i in inset_idx]
@@ -128,6 +148,7 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         lo, hi = min(inset_vals), max(inset_vals)
         pad = max((hi - lo) * 0.15, 0.05)
         axins.set_ylim(lo - pad, hi + pad)
+
     plt.suptitle(suptitle, fontsize=13)
     plt.show()
 
