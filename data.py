@@ -6,15 +6,12 @@ import matplotlib.pyplot as plt
 from itertools import product as _prod
 from foundations import _row_minmax, RANDOM_SEED
 
-# ── Beam / grid parameters ───────────────────────────────────────────────────
-# Slit separation (0.4) > 2 * beam_radius (0.5) so single-slit peaks are
-# at distinct pixel positions, giving rank-4 for the 1-slit matrix.
-# Beams still overlap at their edges so interference fringes are visible.
-_SLIT_X      = np.array([-0.6, -0.2, 0.2, 0.6])
-_BEAM_RADIUS = 0.25
+# ── Beam / grid parameters (original notebook values) ──────────────────────────
+_SLIT_X      = np.array([-0.05, -0.015, 0.015, 0.05])
+_BEAM_RADIUS = 0.5
 _KX_LIST     = [-20, -10, 10, 20]
 _NUM_PIXELS  = 500
-_x_grid      = np.linspace(-1.5, 1.5, _NUM_PIXELS)
+_x_grid      = np.linspace(-1, 1, _NUM_PIXELS)
 
 # ── Shutter labels (O=open, X=closed) ────────────────────────────────────────
 shutter_labels = [
