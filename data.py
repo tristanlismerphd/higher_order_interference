@@ -6,11 +6,14 @@ import matplotlib.pyplot as plt
 from itertools import product as _prod
 from foundations import _row_minmax, RANDOM_SEED
 
-# ── Beam / grid parameters (original notebook values) ──────────────────────────
+# ── Beam / grid parameters ───────────────────────────────────────────────────
+# Beam radius >> slit separation so beams overlap fully and cover the
+# entire detector width.  High KX values produce dense interference fringes
+# comparable to the experimental data.
 _SLIT_X      = np.array([-0.05, -0.015, 0.015, 0.05])
-_BEAM_RADIUS = 0.5
-_KX_LIST     = [-20, -10, 10, 20]
-_NUM_PIXELS  = 150
+_BEAM_RADIUS = 1.5
+_KX_LIST     = [-60, -20, 20, 60]
+_NUM_PIXELS  = 500
 _x_grid      = np.linspace(-1, 1, _NUM_PIXELS)
 
 # ── Shutter labels (O=open, X=closed) ────────────────────────────────────────
@@ -115,7 +118,7 @@ def plot_data(mats, lbls, title_suffix):
         mat = mats[n_open]
         lbl = lbls[n_open]
         im  = ax.imshow(mat, aspect='auto', origin='lower',
-                        cmap='magma', vmin=0, vmax=mat.max())
+                        cmap='magma', vmin=0, vmax=1)
         ax.set_title(f'{n_open} slit(s) open  [{mat.shape[0]} settings × {mat.shape[1]} px]',
                      fontsize=16)
         ax.set_xlabel('pixel index', fontsize=13)
