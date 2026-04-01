@@ -4,9 +4,7 @@
 #  No shot noise: perfect quantum predictions.
 #  (K=1-25, 10-fold CV, parallelised, unit column pinned)
 # ============================================================
-from gpt_fit_theory import (
-    run_rank_sweep, plot_sweep, _N_FOLDS, N_PX_SWEEP, _INSET_K_START
-)
+from rank_sweep_noisy import run_rank_sweep, plot_sweep, _N_FOLDS, N_PX_SWEEP
 from data import build_simulation_data
 
 if __name__ == '__main__':
