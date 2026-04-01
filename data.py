@@ -2,7 +2,7 @@
 #  Data — build simulation & theory intensity matrices
 #  Per-slit Gaussians with spatial offsets produce the slant seen in
 #  experimental data (each slit peaks at a different detector position).
-#  Phases follow {0, π/2}^4 = 16 patterns for ALL slits.
+#  Phases follow {0, pi/2}^4 = 16 patterns for ALL slits.
 # ============================================================
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,16 +11,20 @@ from foundations import _row_minmax, RANDOM_SEED
 
 # ── Beam / grid parameters ───────────────────────────────────────────────────
 BEAM_RADIUS = 1.0
-SLIT_X      = np.array([-0.3, -0.1, 0.1, 0.3])
+# Slits are close together so Gaussians strongly overlap;
+# the small spatial offsets still produce the per-slit 'slant' visible in data.
+SLIT_X      = np.array([-0.15, -0.05, 0.05, 0.15])
 KX_LIST     = [-20, -10, 10, 20]
 NUM_PIXELS  = 500
-x_grid      = np.linspace(-3 * BEAM_RADIUS, 3 * BEAM_RADIUS, NUM_PIXELS)
+# Narrower x range so the Gaussian envelope fills the detector rather than
+# being concentrated in the central 10% of pixels.
+x_grid      = np.linspace(-1.0, 1.0, NUM_PIXELS)
 
-# ── Phase patterns: {0, π/2}^4 = 16 settings for ALL slits ─────────────────
+# ── Phase patterns: {0, pi/2}^4 = 16 settings for ALL slits ─────────────────
 phase_patterns = list(_prod([0.0, np.pi / 2], repeat=4))
 
 def _phase_label(combo):
-    return ','.join('0' if p == 0 else 'π/2' for p in combo)
+    return ','.join('0' if p == 0 else 'pi/2' for p in combo)
 
 # ── Shutter labels (O=open, X=closed) ────────────────────────────────────────
 shutter_labels = [
@@ -104,14 +108,14 @@ def plot_data(mats, lbls, title_suffix):
         lbl = lbls[n_open]
         im  = ax.imshow(mat, aspect='auto', origin='lower',
                         cmap='magma', vmin=0, vmax=1)
-        ax.set_title(f'{n_open} slit(s) open  [{mat.shape[0]} settings × {mat.shape[1]} px]',
+        ax.set_title(f'{n_open} slit(s) open  [{mat.shape[0]} settings x {mat.shape[1]} px]',
                      fontsize=16)
         ax.set_xlabel('pixel index', fontsize=13)
         ax.set_ylabel('setting', fontsize=13)
         ax.set_yticks(np.arange(len(lbl)))
         ax.set_yticklabels(lbl, fontsize=7)
         fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, label='row-norm. intensity')
-    plt.suptitle(f'{title_suffix}  |  phases: {{0, π/2}}^4',
+    plt.suptitle(f'{title_suffix}  |  phases: {{0, pi/2}}^4',
                  fontsize=16, y=1.002)
     plt.show()
 
