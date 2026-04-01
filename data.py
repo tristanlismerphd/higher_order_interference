@@ -1,9 +1,8 @@
 # ============================================================
 #  Data — build simulation & theory intensity matrices
-#  Format matches reading_data.ipynb (Mazurek/Grabowecky convention):
-#    - Single Gaussian envelope: exp(-2x²/r²) × |Σ A_k exp(i(φ_k + kx_k·x))|²
-#    - {0, π/2}^4 = 16 phase patterns for ALL slits
-#    - Closed slits have amplitude A_k = 0
+#  Per-slit Gaussians with spatial offsets produce the slant seen in
+#  experimental data (each slit peaks at a different detector position).
+#  Phases follow {0, π/2}^4 = 16 patterns for ALL slits.
 # ============================================================
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,12 +10,16 @@ from itertools import product as _prod
 from foundations import _row_minmax, RANDOM_SEED
 
 # ── Beam / grid parameters ───────────────────────────────────────────────────
+# Slit separation (0.5) is half the beam radius (1.0):
+#   • Gaussians overlap significantly → clear multi-slit interference
+#   • Peaks are at distinct x positions → visible slant in 1-slit matrix
 BEAM_RADIUS = 1.0
+SLIT_X      = np.array([-0.75, -0.25, 0.25, 0.75])
 KX_LIST     = [-20, -10, 10, 20]
 NUM_PIXELS  = 500
 x_grid      = np.linspace(-3 * BEAM_RADIUS, 3 * BEAM_RADIUS, NUM_PIXELS)
 
-# ── Phase patterns: {0, π/2}^4 = 16 settings for ALL slits ──────────────────
+# ── Phase patterns: {0, π/2}^4 = 16 settings for ALL slits ─────────────────
 phase_patterns = list(_prod([0.0, np.pi / 2], repeat=4))
 
 def _phase_label(combo):
@@ -31,20 +34,25 @@ shutter_labels = [
 ]
 
 def _amplitudes(sl):
-    """Return (A_0, A_1, A_2, A_3): 1 if slit open, 0 if closed."""
+    """Return (A_0,A_1,A_2,A_3): 1=open, 0=closed."""
     return tuple(0 if b == 'X' else 1 for b in sl.split(','))
 
 def _simulate_row(A_tuple, phase_combo):
-    """Single Gaussian envelope × coherent phasor sum (matches reading_data.ipynb)."""
-    amp_sum = sum(
-        A * np.exp(1j * (ph + kx * x_grid))
-        for A, ph, kx in zip(A_tuple, phase_combo, KX_LIST)
+    """
+    Per-slit Gaussian centred at SLIT_X[k], modulated by KX_LIST[k] and phase.
+    Closed slits (A=0) contribute nothing.  The spatial offset of each slit
+    shifts its Gaussian envelope on the detector, producing a slant when
+    only one slit is open and the active slit changes across settings.
+    """
+    field = sum(
+        A * np.exp(-2 * (x_grid - SLIT_X[k])**2 / BEAM_RADIUS**2)
+        * np.exp(1j * (ph + KX_LIST[k] * x_grid))
+        for k, (A, ph) in enumerate(zip(A_tuple, phase_combo))
     )
-    envelope = np.exp(-2 * x_grid**2 / BEAM_RADIUS**2)
-    return envelope * np.abs(amp_sum)**2
+    return np.abs(field)**2
 
 def build_simulation_data():
-    """Build intensity matrices: 16 shutters × 16 phases, grouped by n_open."""
+    """Build intensity matrices: shutters × 16 phases, grouped by n_open."""
     mats, lbls, mats_N = {}, {}, {}
     for n_open in [1, 2, 3, 4]:
         rows, row_labels = [], []
@@ -124,6 +132,5 @@ if __name__ == '__main__':
     mats, lbls, mats_N                = build_simulation_data()
     theory_mats, theory_lbls, th_Neff = build_theory_data(add_noise=True)
     print_summary(mats, theory_mats, mats_N, th_Neff)
-    print(f'  phase_patterns : {len(phase_patterns)} ({"{"}0, π/2{"}"}^4)')
     plot_data(mats, lbls, 'Simulation data')
     plot_data(theory_mats, theory_lbls, f'Theoretical data (Poisson noise, N_eff={th_Neff})')
