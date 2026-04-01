@@ -1,6 +1,7 @@
 # ============================================================
 #  GPT rank sweep — THEORETICAL  (K=1-25, 10-fold CV, Poisson errors)
-#  Parallelised over (K, fold) combinations using joblib
+#  Parallelised over (K, fold) combinations using joblib.
+#  Prepends a pinned column of ones (unit effect) per Mazurek/Grabowecky.
 # ============================================================
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,14 +12,14 @@ from foundations import als_fit, RANDOM_SEED, ALS_REG
 from data import build_simulation_data, build_theory_data
 
 # ── Sweep parameters ──────────────────────────────────────────────────────────
-_K_RANGE   = range(1, 26)     # up to 25 to capture 4-slit rank=16
-_N_FOLDS   = 10
-_N_REST    = 4
-P_FLOOR    = 0.01
-N_PX_SWEEP = 500
+_K_RANGE       = range(1, 26)
+_N_FOLDS       = 10
+_N_REST        = 4
+P_FLOOR        = 0.01
+N_PX_SWEEP     = 500
+UNIT_SIGMA     = 1e-10   # near-zero sigma pins the ones column during ALS
 
 # Inset starts at the expected true rank for each slit count (n²)
-# 1-slit→4, 2-slit→4, 3-slit→9, 4-slit→16
 _INSET_K_START = {1: 4, 2: 4, 3: 9, 4: 16}
 
 def _poisson_sigma(prob_mat, N_eff):
@@ -32,23 +33,42 @@ def _resample_cols(mat, n_out):
     x_out = np.linspace(0, 1, n_out)
     return np.array([np.interp(x_out, x_in, row) for row in mat])
 
-def _fit_one(data_mat, sigma, fold_ids, K, f, sweep_reg):
-    """Run ALS for a single (K, fold) combination."""
-    train_mask = (fold_ids != f)
+def _fit_one(data_aug, sigma_aug, report_mask, fold_ids, K, f, sweep_reg, n_s):
+    """Run ALS for a single (K, fold) on the unit-column-augmented matrix.
+    The ones column is always in the train set and excluded from chi2 reporting.
+    """
+    n_pix = fold_ids.shape[1]
+    data_mask  = (fold_ids != f)                       # (n_s, n_pix)
+    ones_mask  = np.ones((n_s, 1), dtype=bool)         # always train
+    train_mask = np.hstack([ones_mask, data_mask])     # (n_s, 1 + n_pix)
     _, _, tr, te = als_fit(
-        data_mat, sigma, train_mask, K=K,
+        data_aug, sigma_aug, train_mask, K=K,
         n_restarts=_N_REST, reg=sweep_reg,
-        rng=np.random.default_rng(RANDOM_SEED + K * 100 + f)
+        rng=np.random.default_rng(RANDOM_SEED + K * 100 + f),
+        report_mask=report_mask,
     )
     return K, f, tr, te
 
 def run_rank_sweep(data_mat, N_eff, label='', n_jobs=-1):
-    """10-fold CV rank sweep, parallelised over all (K, fold) combos."""
+    """10-fold CV rank sweep with pinned unit column, parallelised."""
     data_mat   = _resample_cols(data_mat, N_PX_SWEEP)
     n_s, n_pix = data_mat.shape
-    sigma      = _poisson_sigma(data_mat, N_eff)
+
+    # ── Prepend unit column (column of ones) ─────────────────────────────
+    ones_col  = np.ones((n_s, 1))
+    data_aug  = np.hstack([ones_col, data_mat])         # (n_s, 1 + n_pix)
+
+    sigma_aug         = _poisson_sigma(data_aug, N_eff)
+    sigma_aug[:, 0]   = UNIT_SIGMA                      # pin the ones column
+
+    # report_mask excludes the ones column from chi2 statistics
+    report_mask = np.hstack([
+        np.zeros((n_s, 1), dtype=bool),
+        np.ones((n_s, n_pix), dtype=bool),
+    ])
+
     sweep_reg  = max(ALS_REG, N_eff * 1e-6)
-    n_total    = n_s * n_pix
+    n_total    = n_s * n_pix                            # CV over data cols only
     rng_cv     = np.random.default_rng(RANDOM_SEED)
     perm       = rng_cv.permutation(n_total)
     fold_ids   = np.empty(n_total, dtype=int)
@@ -56,13 +76,14 @@ def run_rank_sweep(data_mat, N_eff, label='', n_jobs=-1):
         fold_ids[perm[f::_N_FOLDS]] = f
     fold_ids = fold_ids.reshape(n_s, n_pix)
 
-    print(f'\n── {label}  ({n_s}×{n_pix},  N_eff={N_eff:.1f},  reg={sweep_reg:.2e}) ──')
+    print(f'\n── {label}  ({n_s}×{n_pix}+1,  N_eff={N_eff:.1f},  reg={sweep_reg:.2e}) ──')
+    print(f'   [unit column prepended and pinned]')
     print(f'   Running {len(list(_K_RANGE)) * _N_FOLDS} jobs in parallel (n_jobs={n_jobs})...')
 
     t0   = time.time()
     jobs = [(K, f) for K in _K_RANGE for f in range(_N_FOLDS)]
     flat = Parallel(n_jobs=n_jobs)(
-        delayed(_fit_one)(data_mat, sigma, fold_ids, K, f, sweep_reg)
+        delayed(_fit_one)(data_aug, sigma_aug, report_mask, fold_ids, K, f, sweep_reg, n_s)
         for K, f in jobs
     )
     print(f'   Done in {time.time() - t0:.1f}s')
@@ -125,7 +146,7 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         ax.set_title(f'N_eff={N_eff:.0f}', fontsize=10)
         ax.legend(fontsize=7)
 
-        # ── Inset: K >= expected rank ────────────────────────────────────────
+        # ── Inset ────────────────────────────────────────────────────────────────
         inset_idx  = [i for i, k in enumerate(ks) if k >= k_ins]
         inset_ks   = [ks[i] for i in inset_idx]
         inset_xpos = np.arange(len(inset_ks))
@@ -157,22 +178,22 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
 
 
 if __name__ == '__main__':
-    _, _, mats_N                      = build_simulation_data()
-    theory_mats, _, theory_N_eff      = build_theory_data(add_noise=True)
-    theory_mats_N = {n: theory_N_eff for n in [1, 2, 3, 4]}
+    _, _, mats_N              = build_simulation_data()
+    theory_mats, _, th_N_eff  = build_theory_data(add_noise=True)
+    theory_mats_N = {n: th_N_eff for n in [1, 2, 3, 4]}
 
     th_cv = {}
     for n_open in [1, 2, 3, 4]:
         th_cv[n_open] = run_rank_sweep(
-            theory_mats[n_open], N_eff=theory_N_eff,
+            theory_mats[n_open], N_eff=th_N_eff,
             label=f'Theory  {n_open}-slit'
         )
 
     plot_sweep(
         th_cv, theory_mats, theory_mats_N,
         suptitle=(f'Theoretical GPT rank sweep  |  {_N_FOLDS}-fold CV  |  '
-                  f'Poisson noise  N_eff={theory_N_eff}  |  phases: {{0, π/2, π}}\n'
-                  f'{N_PX_SWEEP} pixels  |  Dashed: χ²/pt = 1  |  '
-                  f'Inset: K ≥ expected rank  |  Green: expected rank'),
+                  f'Poisson noise  N_eff={th_N_eff}  |  phases: {{0, π/2, π}}\n'
+                  f'{N_PX_SWEEP} pixels  |  Unit column pinned  |  '
+                  f'Dashed: χ²/pt=1  |  Green: expected rank'),
         panel_prefix='Theory',
     )
