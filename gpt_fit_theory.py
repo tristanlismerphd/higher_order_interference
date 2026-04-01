@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import time
 from joblib import Parallel, delayed
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from numpy.linalg import LinAlgError
 from foundations import als_fit, RANDOM_SEED, ALS_REG
 from data import build_simulation_data, build_theory_data
 
@@ -16,8 +17,11 @@ _K_RANGE       = range(1, 26)
 _N_FOLDS       = 10
 _N_REST        = 4
 P_FLOOR        = 0.01
-N_PX_SWEEP     = 150
-UNIT_SIGMA     = 1e-10
+N_PX_SWEEP     = 500
+# UNIT_SIGMA: sigma for the pinned ones column.
+# Must be << data sigma (~4e-4) to pin the column, but not so small
+# that it creates extreme weight ratios causing singular ALS matrices.
+UNIT_SIGMA     = 1e-4
 
 _INSET_K_START = {1: 4, 2: 4, 3: 9, 4: 16}
 
@@ -33,17 +37,24 @@ def _resample_cols(mat, n_out):
     return np.array([np.interp(x_out, x_in, row) for row in mat])
 
 def _fit_one(data_aug, sigma_aug, report_mask, fold_ids, K, f, sweep_reg, n_s):
-    n_pix      = fold_ids.shape[1]
     data_mask  = (fold_ids != f)
     ones_mask  = np.ones((n_s, 1), dtype=bool)
     train_mask = np.hstack([ones_mask, data_mask])
-    _, _, tr, te = als_fit(
-        data_aug, sigma_aug, train_mask, K=K,
-        n_restarts=_N_REST, reg=sweep_reg,
-        rng=np.random.default_rng(RANDOM_SEED + K * 100 + f),
-        report_mask=report_mask,
-    )
-    return K, f, tr, te
+    # Retry with increasing regularisation if singular matrix is encountered
+    reg = sweep_reg
+    for attempt in range(4):
+        try:
+            _, _, tr, te = als_fit(
+                data_aug, sigma_aug, train_mask, K=K,
+                n_restarts=_N_REST, reg=reg,
+                rng=np.random.default_rng(RANDOM_SEED + K * 100 + f),
+                report_mask=report_mask,
+            )
+            return K, f, tr, te
+        except LinAlgError:
+            reg *= 10   # increase reg and retry
+    # Final fallback: return large chi2 values so this (K,fold) is penalised
+    return K, f, 1e6, 1e6
 
 def run_rank_sweep(data_mat, N_eff, label='', n_jobs=-1):
     """10-fold CV rank sweep with pinned unit column, parallelised."""
@@ -71,7 +82,7 @@ def run_rank_sweep(data_mat, N_eff, label='', n_jobs=-1):
     fold_ids = fold_ids.reshape(n_s, n_pix)
 
     print(f'\n── {label}  ({n_s}×{n_pix}+1,  N_eff={N_eff:.1f},  reg={sweep_reg:.2e}) ──')
-    print(f'   [unit column prepended and pinned]')
+    print(f'   [unit column pinned, UNIT_SIGMA={UNIT_SIGMA}]')
     print(f'   Running {len(list(_K_RANGE)) * _N_FOLDS} jobs in parallel (n_jobs={n_jobs})...')
 
     t0   = time.time()
@@ -116,7 +127,7 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         ax_img.set_xlabel('pixel index', fontsize=9)
         ax_img.set_ylabel('setting index', fontsize=9)
         ax_img.tick_params(labelsize=7)
-        fig.colorbar(im, ax=ax_img, fraction=0.035, pad=0.03, label='intensity')
+        fig.colorbar(im, ax=ax_img, fraction=0.035, pad=0.03, label='row-norm. intensity')
 
         ax = axes[1, col]
         tr_means = [np.mean(cv_dict[n_open][K]['train']) for K in ks]
@@ -183,7 +194,7 @@ if __name__ == '__main__':
     plot_sweep(
         th_cv, theory_mats, theory_mats_N,
         suptitle=(f'Theoretical GPT rank sweep  |  {_N_FOLDS}-fold CV  |  '
-                  f'Poisson noise  N_eff={th_N_eff}  |  phases: {{0, π/2, π}}\n'
+                  f'Poisson noise  N_eff={th_N_eff}  |  phases: {{0, π/2}}^4\n'
                   f'{N_PX_SWEEP} pixels  |  Unit column pinned  |  '
                   f'Dashed: χ²/pt=1  |  Green: expected rank'),
         panel_prefix='Theory',
