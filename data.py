@@ -10,7 +10,7 @@ from foundations import _row_minmax, RANDOM_SEED
 _SLIT_X      = np.array([-0.05, -0.015, 0.015, 0.05])
 _BEAM_RADIUS = 0.5
 _KX_LIST     = [-20, -10, 10, 20]
-_NUM_PIXELS  = 500
+_NUM_PIXELS  = 150
 _x_grid      = np.linspace(-1, 1, _NUM_PIXELS)
 
 # ── Shutter labels (O=open, X=closed) ────────────────────────────────────────

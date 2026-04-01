@@ -16,10 +16,9 @@ _K_RANGE       = range(1, 26)
 _N_FOLDS       = 10
 _N_REST        = 4
 P_FLOOR        = 0.01
-N_PX_SWEEP     = 500
-UNIT_SIGMA     = 1e-10   # near-zero sigma pins the ones column during ALS
+N_PX_SWEEP     = 150
+UNIT_SIGMA     = 1e-10
 
-# Inset starts at the expected true rank for each slit count (n²)
 _INSET_K_START = {1: 4, 2: 4, 3: 9, 4: 16}
 
 def _poisson_sigma(prob_mat, N_eff):
@@ -34,13 +33,10 @@ def _resample_cols(mat, n_out):
     return np.array([np.interp(x_out, x_in, row) for row in mat])
 
 def _fit_one(data_aug, sigma_aug, report_mask, fold_ids, K, f, sweep_reg, n_s):
-    """Run ALS for a single (K, fold) on the unit-column-augmented matrix.
-    The ones column is always in the train set and excluded from chi2 reporting.
-    """
-    n_pix = fold_ids.shape[1]
-    data_mask  = (fold_ids != f)                       # (n_s, n_pix)
-    ones_mask  = np.ones((n_s, 1), dtype=bool)         # always train
-    train_mask = np.hstack([ones_mask, data_mask])     # (n_s, 1 + n_pix)
+    n_pix      = fold_ids.shape[1]
+    data_mask  = (fold_ids != f)
+    ones_mask  = np.ones((n_s, 1), dtype=bool)
+    train_mask = np.hstack([ones_mask, data_mask])
     _, _, tr, te = als_fit(
         data_aug, sigma_aug, train_mask, K=K,
         n_restarts=_N_REST, reg=sweep_reg,
@@ -54,24 +50,22 @@ def run_rank_sweep(data_mat, N_eff, label='', n_jobs=-1):
     data_mat   = _resample_cols(data_mat, N_PX_SWEEP)
     n_s, n_pix = data_mat.shape
 
-    # ── Prepend unit column (column of ones) ─────────────────────────────
     ones_col  = np.ones((n_s, 1))
-    data_aug  = np.hstack([ones_col, data_mat])         # (n_s, 1 + n_pix)
+    data_aug  = np.hstack([ones_col, data_mat])
 
-    sigma_aug         = _poisson_sigma(data_aug, N_eff)
-    sigma_aug[:, 0]   = UNIT_SIGMA                      # pin the ones column
+    sigma_aug       = _poisson_sigma(data_aug, N_eff)
+    sigma_aug[:, 0] = UNIT_SIGMA
 
-    # report_mask excludes the ones column from chi2 statistics
     report_mask = np.hstack([
         np.zeros((n_s, 1), dtype=bool),
         np.ones((n_s, n_pix), dtype=bool),
     ])
 
-    sweep_reg  = max(ALS_REG, N_eff * 1e-6)
-    n_total    = n_s * n_pix                            # CV over data cols only
-    rng_cv     = np.random.default_rng(RANDOM_SEED)
-    perm       = rng_cv.permutation(n_total)
-    fold_ids   = np.empty(n_total, dtype=int)
+    sweep_reg = max(ALS_REG, N_eff * 1e-6)
+    n_total   = n_s * n_pix
+    rng_cv    = np.random.default_rng(RANDOM_SEED)
+    perm      = rng_cv.permutation(n_total)
+    fold_ids  = np.empty(n_total, dtype=int)
     for f in range(_N_FOLDS):
         fold_ids[perm[f::_N_FOLDS]] = f
     fold_ids = fold_ids.reshape(n_s, n_pix)
@@ -112,10 +106,9 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         N_eff = mats_N[n_open]
         k_ins = _INSET_K_START[n_open]
 
-        # ── Top row: intensity matrix ────────────────────────────────────────
         ax_img = axes[0, col]
         im = ax_img.imshow(mat, aspect='auto', origin='lower',
-                           cmap='magma', vmin=0, vmax=mat.max())
+                           cmap='magma', vmin=0, vmax=1)
         ax_img.set_title(f'{panel_prefix}  |  {n_open}-slit\n'
                          f'{mat.shape[0]} settings × {mat.shape[1]} px  '
                          f'(expected rank={n_open**2})',
@@ -125,7 +118,6 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         ax_img.tick_params(labelsize=7)
         fig.colorbar(im, ax=ax_img, fraction=0.035, pad=0.03, label='intensity')
 
-        # ── Bottom row: rank sweep ───────────────────────────────────────────
         ax = axes[1, col]
         tr_means = [np.mean(cv_dict[n_open][K]['train']) for K in ks]
         tr_stds  = [np.std(cv_dict[n_open][K]['train'])  for K in ks]
@@ -146,7 +138,6 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         ax.set_title(f'N_eff={N_eff:.0f}', fontsize=10)
         ax.legend(fontsize=7)
 
-        # ── Inset ────────────────────────────────────────────────────────────────
         inset_idx  = [i for i, k in enumerate(ks) if k >= k_ins]
         inset_ks   = [ks[i] for i in inset_idx]
         inset_xpos = np.arange(len(inset_ks))
@@ -178,8 +169,8 @@ def plot_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
 
 
 if __name__ == '__main__':
-    _, _, mats_N              = build_simulation_data()
-    theory_mats, _, th_N_eff  = build_theory_data(add_noise=True)
+    _, _, mats_N             = build_simulation_data()
+    theory_mats, _, th_N_eff = build_theory_data(add_noise=True)
     theory_mats_N = {n: th_N_eff for n in [1, 2, 3, 4]}
 
     th_cv = {}
