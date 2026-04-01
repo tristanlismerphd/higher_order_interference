@@ -1,5 +1,9 @@
 # ============================================================
-#  Data — build simulation & theory intensity matrices, print summary
+#  Data — build simulation & theory intensity matrices
+#  Format matches reading_data.ipynb (Mazurek/Grabowecky convention):
+#    - Single Gaussian envelope: exp(-2x²/r²) × |Σ A_k exp(i(φ_k + kx_k·x))|²
+#    - {0, π/2}^4 = 16 phase patterns for ALL slits
+#    - Closed slits have amplitude A_k = 0
 # ============================================================
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,14 +11,16 @@ from itertools import product as _prod
 from foundations import _row_minmax, RANDOM_SEED
 
 # ── Beam / grid parameters ───────────────────────────────────────────────────
-# Beam radius >> slit separation so beams overlap fully and cover the
-# entire detector width.  High KX values produce dense interference fringes
-# comparable to the experimental data.
-_SLIT_X      = np.array([-0.05, -0.015, 0.015, 0.05])
-_BEAM_RADIUS = 1.5
-_KX_LIST     = [-60, -20, 20, 60]
-_NUM_PIXELS  = 500
-_x_grid      = np.linspace(-1, 1, _NUM_PIXELS)
+BEAM_RADIUS = 1.0
+KX_LIST     = [-20, -10, 10, 20]
+NUM_PIXELS  = 500
+x_grid      = np.linspace(-3 * BEAM_RADIUS, 3 * BEAM_RADIUS, NUM_PIXELS)
+
+# ── Phase patterns: {0, π/2}^4 = 16 settings for ALL slits ──────────────────
+phase_patterns = list(_prod([0.0, np.pi / 2], repeat=4))
+
+def _phase_label(combo):
+    return ','.join('0' if p == 0 else 'π/2' for p in combo)
 
 # ── Shutter labels (O=open, X=closed) ────────────────────────────────────────
 shutter_labels = [
@@ -24,37 +30,31 @@ shutter_labels = [
     'O,O,X,X', 'O,O,O,X', 'O,O,X,O', 'O,O,O,O'
 ]
 
-# ── Phase grid: {0, π/2, π} varied only for open slits ───────────────────────
-_PHASE_SET  = [0.0, np.pi / 2, np.pi]
-_PHASE_STRS = ['0', r'$\pi/2$', r'$\pi$']
+def _amplitudes(sl):
+    """Return (A_0, A_1, A_2, A_3): 1 if slit open, 0 if closed."""
+    return tuple(0 if b == 'X' else 1 for b in sl.split(','))
 
-def _build_phase_label(open_slits, phase_combo):
-    strs = ['0'] * 4
-    for idx, k in enumerate(open_slits):
-        strs[k] = _PHASE_STRS[_PHASE_SET.index(phase_combo[idx])]
-    return ','.join(strs)
-
-def _simulate_row(open_slits, phase_combo):
-    field = sum(
-        np.exp(-2 * (_x_grid - _SLIT_X[k])**2 / _BEAM_RADIUS**2)
-        * np.exp(1j * (phase_combo[idx] + _KX_LIST[k] * _x_grid))
-        for idx, k in enumerate(open_slits)
+def _simulate_row(A_tuple, phase_combo):
+    """Single Gaussian envelope × coherent phasor sum (matches reading_data.ipynb)."""
+    amp_sum = sum(
+        A * np.exp(1j * (ph + kx * x_grid))
+        for A, ph, kx in zip(A_tuple, phase_combo, KX_LIST)
     )
-    return np.abs(field)**2
+    envelope = np.exp(-2 * x_grid**2 / BEAM_RADIUS**2)
+    return envelope * np.abs(amp_sum)**2
 
 def build_simulation_data():
-    """Build simulated (experimental-mimicking) intensity matrices."""
+    """Build intensity matrices: 16 shutters × 16 phases, grouped by n_open."""
     mats, lbls, mats_N = {}, {}, {}
     for n_open in [1, 2, 3, 4]:
         rows, row_labels = [], []
         for sl in shutter_labels:
-            parts      = sl.split(',')
-            open_slits = [i for i, c in enumerate(parts) if c == 'O']
-            if len(open_slits) != n_open:
+            A = _amplitudes(sl)
+            if sum(A) != n_open:
                 continue
-            for phase_combo in _prod(_PHASE_SET, repeat=n_open):
-                rows.append(_simulate_row(open_slits, phase_combo))
-                row_labels.append(f'{sl} | {_build_phase_label(open_slits, phase_combo)}')
+            for phase_combo in phase_patterns:
+                rows.append(_simulate_row(A, phase_combo))
+                row_labels.append(f'{sl} | {_phase_label(phase_combo)}')
         mat  = np.array(rows)
         mins = mat.min(axis=1, keepdims=True)
         rng  = mat.max(axis=1, keepdims=True) - mins
@@ -65,29 +65,18 @@ def build_simulation_data():
     return mats, lbls, mats_N
 
 def build_theory_data(add_noise=True, N_eff=50000):
-    """Build theoretical intensity matrices.
-
-    add_noise : if True, add Poisson shot noise scaled to N_eff counts per row.
-                Data returned as probabilities so ALS sigma model is consistent.
-    N_eff     : effective photon count per setting row.
-    """
+    """Build theoretical intensity matrices with optional Poisson shot noise."""
     rng = np.random.default_rng(RANDOM_SEED)
     theory_mats, theory_lbls = {}, {}
     for n_open in [1, 2, 3, 4]:
         rows, row_labels = [], []
         for sl in shutter_labels:
-            parts      = sl.split(',')
-            open_slits = [i for i, c in enumerate(parts) if c == 'O']
-            if len(open_slits) != n_open:
+            A = _amplitudes(sl)
+            if sum(A) != n_open:
                 continue
-            for phase_combo in _prod(_PHASE_SET, repeat=n_open):
-                field = sum(
-                    np.exp(-2 * (_x_grid - _SLIT_X[k])**2 / _BEAM_RADIUS**2)
-                    * np.exp(1j * (phase_combo[idx] + _KX_LIST[k] * _x_grid))
-                    for idx, k in enumerate(open_slits)
-                )
-                rows.append(np.abs(field)**2)
-                row_labels.append(f'{sl} | {_build_phase_label(open_slits, phase_combo)}')
+            for phase_combo in phase_patterns:
+                rows.append(_simulate_row(A, phase_combo))
+                row_labels.append(f'{sl} | {_phase_label(phase_combo)}')
 
         exact    = np.array(rows)
         row_sums = exact.sum(axis=1, keepdims=True)
@@ -125,8 +114,8 @@ def plot_data(mats, lbls, title_suffix):
         ax.set_ylabel('setting', fontsize=13)
         ax.set_yticks(np.arange(len(lbl)))
         ax.set_yticklabels(lbl, fontsize=7)
-        fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, label='intensity')
-    plt.suptitle(f'{title_suffix}  |  phases: {{0, π/2, π}} (open slits only)',
+        fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, label='row-norm. intensity')
+    plt.suptitle(f'{title_suffix}  |  phases: {{0, π/2}}^4',
                  fontsize=16, y=1.002)
     plt.show()
 
@@ -135,5 +124,6 @@ if __name__ == '__main__':
     mats, lbls, mats_N                = build_simulation_data()
     theory_mats, theory_lbls, th_Neff = build_theory_data(add_noise=True)
     print_summary(mats, theory_mats, mats_N, th_Neff)
+    print(f'  phase_patterns : {len(phase_patterns)} ({"{"}0, π/2{"}"}^4)')
     plot_data(mats, lbls, 'Simulation data')
     plot_data(theory_mats, theory_lbls, f'Theoretical data (Poisson noise, N_eff={th_Neff})')
