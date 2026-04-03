@@ -3,7 +3,7 @@
 #  GPT rank sweep — structured model D_ij = u_i · V[j,:]
 #  where u_i = (φ_{c(i)}^T s_{config(i)}) is a per-row K-vector
 #  with normalisation constraint u_i[0] = 1.
-#  φ (16 phase matrices) and s (per-config state) are implicit;
+#  φ (81 phase matrices) and s (per-config state) are implicit;
 #  u is fitted freely per row with the pinned-first-entry constraint.
 #  Sharing φ across n_open cases is a future joint-fit extension.
 #  (K=1-20, 10-fold CV, parallelised)
@@ -24,7 +24,8 @@ _N_REST_GPT    = 4
 _ALS_MAX_ITER  = 500
 _ALS_TOL       = 1e-7
 
-_INSET_K_START = {1: 1, 2: 3, 3: 7, 4: 12}
+# All insets show K ≥ 9
+_INSET_K_START = {1: 9, 2: 9, 3: 9, 4: 9}
 
 
 # ── GPT ALS fit ────────────────────────────────────────────────────────────
@@ -298,7 +299,7 @@ if __name__ == '__main__':
         suptitle=(
             f'GPT rank sweep — s·φ_c·X·e model  |  '
             f'Theory + Poisson noise  |  {_N_FOLDS}-fold CV  |  N_eff={th_N_eff}\n'
-            f'u_i[0]=1 normalisation  |  '
+            f'phases: {{0, π/2, π}}^4 = 81 patterns  |  u_i[0]=1 normalisation  |  '
             f'Dashed: χ²/pt=1  |  Green: expected rank'
         ),
         panel_prefix='Theory (noisy)',
