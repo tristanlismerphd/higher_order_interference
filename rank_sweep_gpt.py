@@ -105,7 +105,8 @@ def gpt_als_fit(data, sigma, phase_idx, K,
             A_V = np.einsum('ij,ik,il->jkl', weights, U_row, U_row) + I_K[None]
             # b_V[j,k] = sum_i w[i,j] * data[i,j] * U_row[i,k]
             b_V = np.einsum('ij,ij,ik->jk',  weights, data,  U_row)
-            V   = np.linalg.solve(A_V, b_V)   # (n_pix, K)
+            # solve A_V[j] @ V[j] = b_V[j] for each pixel j
+            V = np.linalg.solve(A_V, b_V[..., None])[..., 0]   # (n_pix, K)
 
             # ── Update u_c (one phase pattern at a time) ──────────────────
             # Split: u_c = [1, u_c_free], V = [V0, Vr]
@@ -194,7 +195,7 @@ def run_gpt_rank_sweep(data_mat, N_eff, label='', n_jobs=-1):
     fold_ids = fold_ids.reshape(n_rows, n_pix)
 
     ks = list(_K_RANGE_GPT)
-    print(f'\n── GPT {label}  ({n_rows}\u00d7{n_pix},  N_eff={N_eff:.1f},  reg={sweep_reg:.2e}) ──')
+    print(f'\n── GPT {label}  ({n_rows}×{n_pix},  N_eff={N_eff:.1f},  reg={sweep_reg:.2e}) ──')
     print(f'   Running {len(ks) * _N_FOLDS} jobs in parallel (n_jobs={n_jobs})...')
 
     t0   = time.time()
@@ -236,7 +237,7 @@ def plot_gpt_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
                            cmap='magma', vmin=0, vmax=1)
         ax_img.set_title(
             f'{panel_prefix}  |  {n_open}-slit\n'
-            f'{mat.shape[0]} settings \u00d7 {mat.shape[1]} px  '
+            f'{mat.shape[0]} settings × {mat.shape[1]} px  '
             f'(expected rank={n_open**2})',
             fontsize=10,
         )
@@ -261,7 +262,7 @@ def plot_gpt_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         ax.set_xticks(x_pos)
         ax.set_xticklabels([str(k) for k in ks], fontsize=7, rotation=45)
         ax.set_xlabel('GPT rank K', fontsize=10)
-        ax.set_ylabel('\u03c7\u00b2/pt', fontsize=10)
+        ax.set_ylabel('χ²/pt', fontsize=10)
         ax.set_title(f'N_eff={N_eff:.0f}', fontsize=10)
         ax.legend(fontsize=7)
 
@@ -280,7 +281,7 @@ def plot_gpt_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         axins.set_xticklabels([str(k) for k in inset_ks], fontsize=6, rotation=45)
         axins.tick_params(axis='y', labelsize=6)
         axins.set_xlabel('K', fontsize=7)
-        axins.set_title(f'K \u2265 {k_ins}', fontsize=7, pad=2)
+        axins.set_title(f'K ≥ {k_ins}', fontsize=7, pad=2)
         inset_vals = (
             [tr_means[i] - tr_stds[i] for i in inset_idx] +
             [te_means[i] - te_stds[i] for i in inset_idx] +
@@ -311,10 +312,10 @@ if __name__ == '__main__':
     plot_gpt_sweep(
         gpt_cv, theory_mats, theory_mats_N,
         suptitle=(
-            f'GPT rank sweep \u2014 s\u00b7\u03c6_c\u00b7X\u00b7e model  |  '
+            f'GPT rank sweep — s·φ_c·X·e model  |  '
             f'Theory + Poisson noise  |  {_N_FOLDS}-fold CV  |  N_eff={th_N_eff}\n'
-            f'phases: {{0, \u03c0/2}}^4  |  Normalisation: (s\u00b7\u03c6_c)[0]=1  |  '
-            f'Dashed: \u03c7\u00b2/pt=1  |  Green: expected rank'
+            f'phases: {{0, π/2}}^4  |  Normalisation: (s·φ_c)[0]=1  |  '
+            f'Dashed: χ²/pt=1  |  Green: expected rank'
         ),
         panel_prefix='Theory (noisy)',
     )
