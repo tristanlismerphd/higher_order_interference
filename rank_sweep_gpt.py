@@ -236,13 +236,17 @@ def plot_gpt_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         te_means = [np.mean(cv_dict[n_open][K]['test'])  for K in ks]
         te_stds  = [np.std (cv_dict[n_open][K]['test'])  for K in ks]
 
+        # K where test chi2 is minimised = detected rank of the matrix
+        k_min_idx = int(np.argmin(te_means))
+        k_min     = ks[k_min_idx]
+
         ax.bar(x_pos - width/2, tr_means, width, yerr=tr_stds, capsize=3,
                color='steelblue', alpha=0.85, ecolor='navy',    label='Train')
         ax.bar(x_pos + width/2, te_means, width, yerr=te_stds, capsize=3,
                color='tomato',    alpha=0.85, ecolor='darkred', label='Test')
-        ax.axhline(1.0, color='gray',  linestyle='--', linewidth=1)
-        ax.axvline(n_open**2 - 1, color='green', linestyle=':', linewidth=1.2,
-                   label=f'Expected rank={n_open**2}')
+        ax.axhline(1.0, color='gray', linestyle='--', linewidth=1)
+        ax.axvline(k_min_idx, color='green', linestyle=':', linewidth=1.5,
+                   label=f'Rank of matrix = {k_min}')
         ax.set_xticks(x_pos)
         ax.set_xticklabels([str(k) for k in ks], fontsize=7, rotation=45)
         ax.set_xlabel('GPT rank K', fontsize=10)
@@ -262,6 +266,10 @@ def plot_gpt_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
                   yerr=[te_stds[i] for i in inset_idx], capsize=2,
                   color='tomato', alpha=0.85, ecolor='darkred')
         axins.axhline(1.0, color='gray', linestyle='--', linewidth=0.8)
+        # Draw rank line in inset if it falls within the inset range
+        if k_min in inset_ks:
+            axins.axvline(inset_ks.index(k_min), color='green',
+                          linestyle=':', linewidth=1.2)
         axins.set_xticks(inset_xpos)
         axins.set_xticklabels([str(k) for k in inset_ks], fontsize=6, rotation=45)
         axins.tick_params(axis='y', labelsize=6)
@@ -300,7 +308,7 @@ if __name__ == '__main__':
             f'GPT rank sweep — s·φ_c·X·e model  |  '
             f'Theory + Poisson noise  |  {_N_FOLDS}-fold CV  |  N_eff={th_N_eff}\n'
             f'phases: {{0, π/2, π}}^4 = 81 patterns  |  u_i[0]=1 normalisation  |  '
-            f'Dashed: χ²/pt=1  |  Green: expected rank'
+            f'Dashed: χ²/pt=1  |  Green: rank of matrix'
         ),
         panel_prefix='Theory (noisy)',
     )
