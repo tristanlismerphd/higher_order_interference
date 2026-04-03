@@ -20,7 +20,7 @@ _K_RANGE_GPT  = range(1, 21)
 _N_REST_GPT   = 4
 _ALS_MAX_ITER = 500
 _ALS_TOL      = 1e-7
-_INSET_K_START = 9   # all insets show K ≥ 9
+_INSET_KS     = [14, 15, 16, 17, 18]   # K values shown in inset
 
 
 # ── GPT ALS fit ────────────────────────────────────────────────────────────
@@ -167,23 +167,18 @@ def plot_gpt_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
     x_pos = np.arange(len(ks))
     width = 0.38
 
-    # 2×2 quadrant layout: each quadrant = image (top) + bar chart (bottom)
-    # GridSpec rows: [img, bar, img, bar], cols: [left, right]
     fig = plt.figure(figsize=(24, 28))
     gs  = fig.add_gridspec(
         4, 2,
         height_ratios=[1, 3, 1, 3],
         hspace=0.4, wspace=0.35,
     )
-
-    # (img_gs_row, bar_gs_row, gs_col) per n_open
     layout = [(0, 1, 0), (0, 1, 1), (2, 3, 0), (2, 3, 1)]
 
     for (img_row, bar_row, col), n_open in zip(layout, [1, 2, 3, 4]):
         mat   = mat_dict[n_open]
         N_eff = mats_N[n_open]
 
-        # ── Simulation image ────────────────────────────────────────────
         ax_img = fig.add_subplot(gs[img_row, col])
         im = ax_img.imshow(_row_norm(mat), aspect='auto', origin='lower',
                            cmap='magma', vmin=0, vmax=1)
@@ -199,7 +194,6 @@ def plot_gpt_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         fig.colorbar(im, ax=ax_img, fraction=0.03, pad=0.03,
                      label='row-norm. intensity')
 
-        # ── Chi2 bar chart ────────────────────────────────────────────
         ax = fig.add_subplot(gs[bar_row, col])
         tr_means = [np.mean(cv_dict[n_open][K]['train']) for K in ks]
         tr_stds  = [np.std (cv_dict[n_open][K]['train']) for K in ks]
@@ -218,8 +212,8 @@ def plot_gpt_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         ax.set_title(f'N_eff = {N_eff:.0f}', fontsize=11)
         ax.legend(fontsize=9, loc='lower left')
 
-        # ── Inset: K ≥ 9, large ──────────────────────────────────────────
-        inset_idx  = [i for i, k in enumerate(ks) if k >= _INSET_K_START]
+        # ── Inset: K = 14–18 ──────────────────────────────────────────
+        inset_idx  = [i for i, k in enumerate(ks) if k in _INSET_KS]
         inset_ks   = [ks[i] for i in inset_idx]
         inset_xpos = np.arange(len(inset_ks))
 
@@ -233,11 +227,12 @@ def plot_gpt_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
                   color='tomato', alpha=0.85, ecolor='darkred')
         axins.axhline(1.0, color='gray', linestyle='--', linewidth=0.9)
         axins.set_xticks(inset_xpos)
-        axins.set_xticklabels([str(k) for k in inset_ks], fontsize=7, rotation=45)
-        axins.tick_params(axis='y', labelsize=7)
-        axins.set_xlabel('K', fontsize=8)
-        axins.set_ylabel('χ²/pt', fontsize=8)
-        axins.set_title(f'K ≥ {_INSET_K_START}', fontsize=8, pad=3)
+        axins.set_xticklabels([str(k) for k in inset_ks], fontsize=8)
+        axins.tick_params(axis='y', labelsize=8)
+        axins.set_xlabel('K', fontsize=9)
+        axins.set_ylabel('χ²/pt', fontsize=9)
+        axins.set_title(f'K = {–".join([str(_INSET_KS[0]), str(_INSET_KS[-1])])}',
+                        fontsize=9, pad=3)
         inset_vals = (
             [tr_means[i] - tr_stds[i] for i in inset_idx] +
             [te_means[i] - te_stds[i] for i in inset_idx] +
