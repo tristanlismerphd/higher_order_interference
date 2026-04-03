@@ -1,8 +1,7 @@
 # ============================================================
 #  rank_sweep_gpt.py
-#  GPT rank sweep — structured model D_ij = u_i · V[j,:]
-#  where u_i = (φ_{c(i)}^T s_{config(i)}) is a per-row K-vector
-#  with normalisation constraint u_i[0] = 1.
+#  GPT rank sweep -- structured model D_ij = u_i * V[j,:]
+#  where u_i is a per-row K-vector with u_i[0] = 1.
 #  (K=1-20, 10-fold CV, parallelised)
 # ============================================================
 import numpy as np
@@ -12,24 +11,41 @@ from joblib import Parallel, delayed
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from numpy.linalg import LinAlgError
 from foundations import RANDOM_SEED, ALS_REG
-from data import build_simulation_data, build_theory_data
-from rank_sweep_noisy import _poisson_sigma, _resample_cols, _N_FOLDS, N_PX_SWEEP
+from data import build_theory_data
 
-# ── Sweep parameters ───────────────────────────────────────────────────────
+# -- Sweep parameters --------------------------------------------------
 _K_RANGE_GPT  = range(1, 21)
 _N_REST_GPT   = 4
 _ALS_MAX_ITER = 500
 _ALS_TOL      = 1e-7
-_INSET_KS     = [14, 15, 16, 17, 18]   # K values shown in inset
+_INSET_KS     = list(range(12, 19))   # K = 12..18 shown in inset
+
+# -- Noise / CV helpers (inlined from rank_sweep_noisy) ----------------
+_N_FOLDS   = 10
+N_PX_SWEEP = 500
+_P_FLOOR   = 0.01
 
 
-# ── GPT ALS fit ────────────────────────────────────────────────────────────
+def _poisson_sigma(prob_mat, N_eff):
+    return np.sqrt(np.maximum(prob_mat, _P_FLOOR)) / np.sqrt(N_eff)
+
+
+def _resample_cols(mat, n_out):
+    n_in = mat.shape[1]
+    if n_in == n_out:
+        return mat
+    x_in  = np.linspace(0, 1, n_in)
+    x_out = np.linspace(0, 1, n_out)
+    return np.array([np.interp(x_out, x_in, row) for row in mat])
+
+
+# -- GPT ALS fit -------------------------------------------------------
 def gpt_als_fit(data, sigma, K,
                 train_mask=None, n_restarts=_N_REST_GPT,
                 max_iter=_ALS_MAX_ITER, tol=_ALS_TOL,
                 reg=ALS_REG, rng=None):
     """
-    GPT rank-K fit: D_ij = u_i · V[j,:],  u_i[0] = 1.
+    GPT rank-K fit: D_ij = u_i * V[j,:],  u_i[0] = 1.
     Returns u, V, train_chi2, test_chi2.
     """
     if rng is None:
@@ -103,7 +119,7 @@ def gpt_als_fit(data, sigma, K,
     return best_u, best_V, best_train_chi2, best_test_chi2
 
 
-# ── CV fold & rank sweep ──────────────────────────────────────────────────────
+# -- CV fold & rank sweep ----------------------------------------------
 def _fit_one_gpt(data_mat, sigma_mat, fold_ids, K, f, reg):
     train_mask = (fold_ids != f)
     for _ in range(4):
@@ -152,49 +168,18 @@ def run_gpt_rank_sweep(data_mat, N_eff, label='', n_jobs=-1):
     return results
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-def _row_norm(mat):
-    m  = mat.astype(float).copy()
-    lo = m.min(axis=1, keepdims=True)
-    hi = m.max(axis=1, keepdims=True)
-    rng = hi - lo;  rng[rng == 0] = 1.0
-    return (m - lo) / rng
-
-
-# ── Plot ───────────────────────────────────────────────────────────────────
-def plot_gpt_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
+# -- Plot --------------------------------------------------------------
+def plot_gpt_sweep(cv_dict, mats_N, suptitle):
     ks    = list(_K_RANGE_GPT)
     x_pos = np.arange(len(ks))
     width = 0.38
 
-    fig = plt.figure(figsize=(24, 28))
-    gs  = fig.add_gridspec(
-        4, 2,
-        height_ratios=[1, 3, 1, 3],
-        hspace=0.4, wspace=0.35,
-    )
-    layout = [(0, 1, 0), (0, 1, 1), (2, 3, 0), (2, 3, 1)]
+    fig, axes = plt.subplots(2, 2, figsize=(22, 14))
+    fig.subplots_adjust(hspace=0.45, wspace=0.35)
 
-    for (img_row, bar_row, col), n_open in zip(layout, [1, 2, 3, 4]):
-        mat   = mat_dict[n_open]
+    for ax, n_open in zip(axes.flat, [1, 2, 3, 4]):
         N_eff = mats_N[n_open]
 
-        ax_img = fig.add_subplot(gs[img_row, col])
-        im = ax_img.imshow(_row_norm(mat), aspect='auto', origin='lower',
-                           cmap='magma', vmin=0, vmax=1)
-        ax_img.set_title(
-            f'{panel_prefix}  |  {n_open}-slit\n'
-            f'{mat.shape[0]} settings x {mat.shape[1]} px  '
-            f'(expected rank = {n_open**2})',
-            fontsize=11,
-        )
-        ax_img.set_xlabel('pixel index', fontsize=9)
-        ax_img.set_ylabel('setting index', fontsize=9)
-        ax_img.tick_params(labelsize=7)
-        fig.colorbar(im, ax=ax_img, fraction=0.03, pad=0.03,
-                     label='row-norm. intensity')
-
-        ax = fig.add_subplot(gs[bar_row, col])
         tr_means = [np.mean(cv_dict[n_open][K]['train']) for K in ks]
         tr_stds  = [np.std (cv_dict[n_open][K]['train']) for K in ks]
         te_means = [np.mean(cv_dict[n_open][K]['test'])  for K in ks]
@@ -206,13 +191,13 @@ def plot_gpt_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
                color='tomato',    alpha=0.85, ecolor='darkred', label='Test')
         ax.axhline(1.0, color='gray', linestyle='--', linewidth=1)
         ax.set_xticks(x_pos)
-        ax.set_xticklabels([str(k) for k in ks], fontsize=8, rotation=45)
-        ax.set_xlabel('GPT rank K', fontsize=11)
-        ax.set_ylabel('chi2/pt', fontsize=11)
-        ax.set_title(f'N_eff = {N_eff:.0f}', fontsize=11)
-        ax.legend(fontsize=9, loc='lower left')
+        ax.set_xticklabels([str(k) for k in ks], fontsize=9, rotation=45)
+        ax.set_xlabel('GPT rank K', fontsize=12)
+        ax.set_ylabel('chi2/pt', fontsize=12)
+        ax.set_title(f'{n_open}-slit  |  N_eff = {N_eff:.0f}', fontsize=13)
+        ax.legend(fontsize=10, loc='lower left')
 
-        # ── Inset: K = 14-18 ──────────────────────────────────────────
+        # -- Inset: K = 12-18 --
         inset_idx  = [i for i, k in enumerate(ks) if k in _INSET_KS]
         inset_ks   = [ks[i] for i in inset_idx]
         inset_xpos = np.arange(len(inset_ks))
@@ -242,14 +227,13 @@ def plot_gpt_sweep(cv_dict, mat_dict, mats_N, suptitle, panel_prefix):
         pad_v  = max((hi - lo) * 0.15, 0.05)
         axins.set_ylim(lo - pad_v, hi + pad_v)
 
-    fig.suptitle(suptitle, fontsize=13, y=1.01)
+    fig.suptitle(suptitle, fontsize=13)
     plt.tight_layout()
     plt.show()
 
 
-# ── Entry point ─────────────────────────────────────────────────────────────
+# -- Entry point -------------------------------------------------------
 if __name__ == '__main__':
-    _, _, mats_N             = build_simulation_data()
     theory_mats, _, th_N_eff = build_theory_data(add_noise=True)
     theory_mats_N = {n: th_N_eff for n in [1, 2, 3, 4]}
 
@@ -261,12 +245,11 @@ if __name__ == '__main__':
         )
 
     plot_gpt_sweep(
-        gpt_cv, theory_mats, theory_mats_N,
+        gpt_cv, theory_mats_N,
         suptitle=(
             f'GPT rank sweep -- s*phi_c*X*e model  |  '
             f'Theory + Poisson noise  |  {_N_FOLDS}-fold CV  |  N_eff={th_N_eff}\n'
             f'phases: {{0, pi/2, pi}}^4 = 81 patterns  |  '
             f'u_i[0]=1  |  Dashed: chi2/pt=1'
         ),
-        panel_prefix='Theory (noisy)',
     )
