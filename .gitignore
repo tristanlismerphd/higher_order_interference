@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Output / generated files
+*.png
+*.pdf
+*.svg
+*.npy
+*.npz
+*.csv
+*.pkl
+*.pickle
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# macOS
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
