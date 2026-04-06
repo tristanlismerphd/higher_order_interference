@@ -22,7 +22,7 @@ _INSET_KS     = list(range(12, 19))   # K = 12..18 shown in inset
 _TABLE_KS     = [14, 15, 16, 17, 18]  # K values shown in summary table
 
 # -- Noise / CV helpers (inlined from rank_sweep_noisy) ----------------
-_N_FOLDS   = 20
+_N_FOLDS   = 10
 N_PX_SWEEP = 500
 _P_FLOOR   = 0.01
 
@@ -286,7 +286,7 @@ if __name__ == '__main__':
         suptitle=(
             f'GPT rank sweep -- s*phi_c*X*e model  |  '
             f'Theory + Poisson noise  |  {_N_FOLDS}-fold CV  |  N_eff={th_N_eff}\n'
-            f'phases: {{0, pi/2, pi}}^4 = 81 patterns  |  '
+            f'phases: {{0, pi/2, pi, 3pi/2}}^4 = 256 patterns  |  '
             f'u_i[0]=1  |  Dashed: chi2/pt=1'
         ),
     )
