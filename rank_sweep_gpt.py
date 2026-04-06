@@ -19,6 +19,7 @@ _N_REST_GPT   = 4
 _ALS_MAX_ITER = 500
 _ALS_TOL      = 1e-7
 _INSET_KS     = list(range(12, 19))   # K = 12..18 shown in inset
+_TABLE_KS     = [14, 15, 16, 17, 18]  # K values shown in summary table
 
 # -- Noise / CV helpers (inlined from rank_sweep_noisy) ----------------
 _N_FOLDS   = 10
@@ -37,6 +38,32 @@ def _resample_cols(mat, n_out):
     x_in  = np.linspace(0, 1, n_in)
     x_out = np.linspace(0, 1, n_out)
     return np.array([np.interp(x_out, x_in, row) for row in mat])
+
+
+# -- Summary table helper ----------------------------------------------
+def _add_rank_table(ax, cv_results, ks):
+    """Add a K=14-18 summary table below ax."""
+    col_labels = ['K', 'Train (mean\u00b1std)', 'Test (mean\u00b1std)']
+    cell_text = []
+    for K in _TABLE_KS:
+        if K not in cv_results:
+            continue
+        tr = cv_results[K]['train']
+        te = cv_results[K]['test']
+        cell_text.append([
+            str(K),
+            f'{np.mean(tr):.4f} \u00b1 {np.std(tr):.4f}',
+            f'{np.mean(te):.4f} \u00b1 {np.std(te):.4f}',
+        ])
+    tbl = ax.table(
+        cellText=cell_text,
+        colLabels=col_labels,
+        loc='bottom',
+        bbox=[0, -0.54, 1, 0.32],
+        cellLoc='center',
+    )
+    tbl.auto_set_font_size(False)
+    tbl.set_fontsize(8)
 
 
 # -- GPT ALS fit -------------------------------------------------------
@@ -174,8 +201,8 @@ def plot_gpt_sweep(cv_dict, mats_N, suptitle):
     x_pos = np.arange(len(ks))
     width = 0.38
 
-    fig, axes = plt.subplots(2, 2, figsize=(22, 14))
-    fig.subplots_adjust(hspace=0.45, wspace=0.35)
+    fig, axes = plt.subplots(2, 2, figsize=(22, 18))
+    fig.subplots_adjust(hspace=0.75, wspace=0.35)
 
     for ax, n_open in zip(axes.flat, [1, 2, 3, 4]):
         N_eff = mats_N[n_open]
@@ -226,6 +253,8 @@ def plot_gpt_sweep(cv_dict, mats_N, suptitle):
         lo, hi = min(inset_vals), max(inset_vals)
         pad_v  = max((hi - lo) * 0.15, 0.05)
         axins.set_ylim(lo - pad_v, hi + pad_v)
+
+        _add_rank_table(ax, cv_dict[n_open], ks)
 
     fig.suptitle(suptitle, fontsize=13)
     plt.tight_layout()
