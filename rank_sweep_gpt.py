@@ -22,7 +22,7 @@ _INSET_KS     = list(range(12, 19))   # K = 12..18 shown in inset
 _TABLE_KS     = [14, 15, 16, 17, 18]  # K values shown in summary table
 
 # -- Noise / CV helpers (inlined from rank_sweep_noisy) ----------------
-_N_FOLDS   = 10
+_N_FOLDS   = 20
 N_PX_SWEEP = 500
 _P_FLOOR   = 0.01
 
@@ -201,11 +201,13 @@ def plot_gpt_sweep(cv_dict, mats_N, suptitle):
     x_pos = np.arange(len(ks))
     width = 0.38
 
-    fig, axes = plt.subplots(2, 2, figsize=(22, 18))
+    fig, axes = plt.subplots(2, 3, figsize=(33, 18))
     fig.subplots_adjust(hspace=0.75, wspace=0.35)
+    axes.flat[5].set_visible(False)
 
-    for ax, n_open in zip(axes.flat, [1, 2, 3, 4]):
+    for ax, n_open in zip(axes.flat, [1, 2, 3, 4, 'all']):
         N_eff = mats_N[n_open]
+        title_lbl = 'All configs' if n_open == 'all' else f'{n_open}-slit'
 
         tr_means = [np.mean(cv_dict[n_open][K]['train']) for K in ks]
         tr_stds  = [np.std (cv_dict[n_open][K]['train']) for K in ks]
@@ -221,7 +223,7 @@ def plot_gpt_sweep(cv_dict, mats_N, suptitle):
         ax.set_xticklabels([str(k) for k in ks], fontsize=9, rotation=45)
         ax.set_xlabel('GPT rank K', fontsize=12)
         ax.set_ylabel('chi2/pt', fontsize=12)
-        ax.set_title(f'{n_open}-slit  |  N_eff = {N_eff:.0f}', fontsize=13)
+        ax.set_title(f'{title_lbl}  |  N_eff = {N_eff:.0f}', fontsize=13)
         ax.legend(fontsize=10, loc='lower left')
 
         # -- Inset: K = 12-18 --
@@ -272,6 +274,12 @@ if __name__ == '__main__':
             theory_mats[n_open], N_eff=th_N_eff,
             label=f'Theory (noisy)  {n_open}-slit',
         )
+    all_mat = np.vstack([theory_mats[n] for n in [1, 2, 3, 4]])
+    gpt_cv['all'] = run_gpt_rank_sweep(
+        all_mat, N_eff=th_N_eff,
+        label='Theory (noisy)  all-configs',
+    )
+    theory_mats_N['all'] = th_N_eff
 
     plot_gpt_sweep(
         gpt_cv, theory_mats_N,

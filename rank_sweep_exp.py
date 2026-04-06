@@ -114,10 +114,12 @@ def plot_exp_sweep(cv_dict, exp_N_eff, suptitle):
     ks    = list(_K_RANGE_GPT)
     x_pos = np.arange(len(ks))
     width = 0.38
-    fig, axes = plt.subplots(2, 2, figsize=(22, 18))
+    fig, axes = plt.subplots(2, 3, figsize=(33, 18))
     fig.subplots_adjust(hspace=0.75, wspace=0.35)
-    for ax, n_open in zip(axes.flat, [1, 2, 3, 4]):
+    axes.flat[5].set_visible(False)
+    for ax, n_open in zip(axes.flat, [1, 2, 3, 4, 'all']):
         N_eff    = exp_N_eff[n_open]
+        title_lbl = 'All configs' if n_open == 'all' else f'{n_open}-slit'
         tr_means = [np.mean(cv_dict[n_open][K]['train']) for K in ks]
         tr_stds  = [np.std (cv_dict[n_open][K]['train']) for K in ks]
         te_means = [np.mean(cv_dict[n_open][K]['test'])  for K in ks]
@@ -131,7 +133,7 @@ def plot_exp_sweep(cv_dict, exp_N_eff, suptitle):
         ax.set_xticklabels([str(k) for k in ks], fontsize=9, rotation=45)
         ax.set_xlabel('GPT rank K', fontsize=12)
         ax.set_ylabel('chi2/pt', fontsize=12)
-        ax.set_title(f'{n_open}-slit  |  N_eff = {N_eff:.2e}', fontsize=13)
+        ax.set_title(f'{title_lbl}  |  N_eff = {N_eff:.2e}', fontsize=13)
         ax.legend(fontsize=10, loc='lower left')
         inset_idx  = [i for i, k in enumerate(ks) if k in _INSET_KS]
         inset_ks   = [ks[i] for i in inset_idx]
@@ -177,6 +179,14 @@ if __name__ == '__main__':
             exp_mats[n_open], N_eff=exp_N_eff[n_open],
             label=f'Experimental  {n_open}-slit',
         )
+    all_mat = np.vstack([exp_mats[n] for n in [1, 2, 3, 4]])
+    all_N_eff = float(np.mean(list(exp_N_eff.values())))
+    gpt_cv['all'] = run_gpt_rank_sweep(
+        all_mat, N_eff=all_N_eff,
+        label='Experimental  all-configs',
+    )
+    exp_N_eff['all'] = all_N_eff
+
     plot_exp_sweep(
         gpt_cv, exp_N_eff,
         suptitle=(
