@@ -16,11 +16,11 @@ KX_LIST     = [-20, -10, 10, 20]
 NUM_PIXELS  = 500
 x_grid      = np.linspace(-1.0, 1.0, NUM_PIXELS)
 
-# ── Phase patterns: {0, pi/2, pi, 3pi/2}^4 = 256 settings for ALL slits ────
-phase_patterns = list(_prod([0.0, np.pi / 2, np.pi, 3 * np.pi / 2], repeat=4))
+# ── Phase patterns: {0, pi/2, pi}^4 = 81 settings for ALL slits ────────────
+phase_patterns = list(_prod([0.0, np.pi / 2, np.pi], repeat=4))
 
 def _phase_label(combo):
-    labels = {0.0: '0', np.pi / 2: 'pi/2', np.pi: 'pi', 3 * np.pi / 2: '3pi/2'}
+    labels = {0.0: '0', np.pi / 2: 'pi/2', np.pi: 'pi'}
     return ','.join(labels.get(p, f'{p:.2f}') for p in combo)
 
 # ── Shutter labels (O=open, X=closed) ──────────────────────────────────
@@ -112,7 +112,7 @@ def plot_data(mats, lbls, title_suffix):
         ax.set_yticks(np.arange(len(lbl)))
         ax.set_yticklabels(lbl, fontsize=7)
         fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, label='row-norm. intensity')
-    plt.suptitle(f'{title_suffix}  |  phases: {{0, π/2, π, 3π/2}}^4',
+    plt.suptitle(f'{title_suffix}  |  phases: {{0, π/2, π}}^4',
                  fontsize=16, y=1.002)
     plt.show()
 

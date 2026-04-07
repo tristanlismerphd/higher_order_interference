@@ -19,7 +19,7 @@ _N_REST_GPT   = 4
 _ALS_MAX_ITER = 500
 _ALS_TOL      = 1e-7
 _INSET_KS       = list(range(12, 19))  # default inset range
-_INSET_KS_1SLIT = list(range(1, 6))   # inset for 1-slit panel
+_INSET_KS_1SLIT = list(range(2, 6))   # inset for 1-slit panel (K=2-5)
 _TABLE_KS       = [14, 15, 16, 17, 18]
 _TABLE_KS_1SLIT = [1, 2, 3, 4, 5]
 
@@ -205,11 +205,10 @@ def plot_gpt_sweep(cv_dict, mats_N, suptitle):
     x_pos = np.arange(len(ks))
     width = 0.38
 
-    fig, axes = plt.subplots(2, 3, figsize=(33, 18))
-    fig.subplots_adjust(hspace=0.75, wspace=0.35)
-    axes.flat[5].set_visible(False)
+    fig, axes = plt.subplots(1, 3, figsize=(33, 10))
+    fig.subplots_adjust(wspace=0.35)
 
-    for ax, n_open in zip(axes.flat, [1, 2, 3, 4, 'all']):
+    for ax, n_open in zip(axes.flat, [1, 2, 'all']):
         N_eff = mats_N[n_open]
         title_lbl = 'All configs' if n_open == 'all' else f'{n_open}-slit'
 
@@ -275,7 +274,7 @@ if __name__ == '__main__':
     theory_mats_N = {n: th_N_eff for n in [1, 2, 3, 4]}
 
     gpt_cv = {}
-    for n_open in [1, 2, 3, 4]:
+    for n_open in [1, 2]:
         gpt_cv[n_open] = run_gpt_rank_sweep(
             theory_mats[n_open], N_eff=th_N_eff,
             label=f'Theory (noisy)  {n_open}-slit',
@@ -285,14 +284,14 @@ if __name__ == '__main__':
         all_mat, N_eff=th_N_eff,
         label='Theory (noisy)  all-configs',
     )
-    theory_mats_N['all'] = th_N_eff
+    theory_mats_N = {1: th_N_eff, 2: th_N_eff, 'all': th_N_eff}
 
     plot_gpt_sweep(
         gpt_cv, theory_mats_N,
         suptitle=(
             f'GPT rank sweep -- s*phi_c*X*e model  |  '
             f'Theory + Poisson noise  |  {_N_FOLDS}-fold CV  |  N_eff={th_N_eff}\n'
-            f'phases: {{0, pi/2, pi, 3pi/2}}^4 = 256 patterns  |  '
+            f'phases: {{0, pi/2, pi}}^4 = 81 patterns  |  '
             f'u_i[0]=1  |  Dashed: chi2/pt=1'
         ),
     )

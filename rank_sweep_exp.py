@@ -115,10 +115,9 @@ def plot_exp_sweep(cv_dict, exp_N_eff, suptitle):
     ks    = list(_K_RANGE_GPT)
     x_pos = np.arange(len(ks))
     width = 0.38
-    fig, axes = plt.subplots(2, 3, figsize=(33, 18))
-    fig.subplots_adjust(hspace=0.75, wspace=0.35)
-    axes.flat[5].set_visible(False)
-    for ax, n_open in zip(axes.flat, [1, 2, 3, 4, 'all']):
+    fig, axes = plt.subplots(1, 3, figsize=(33, 10))
+    fig.subplots_adjust(wspace=0.35)
+    for ax, n_open in zip(axes.flat, [1, 2, 'all']):
         N_eff    = exp_N_eff[n_open]
         title_lbl = 'All configs' if n_open == 'all' else f'{n_open}-slit'
         tr_means = [np.mean(cv_dict[n_open][K]['train']) for K in ks]
@@ -177,7 +176,7 @@ if __name__ == '__main__':
     exp_mats, exp_N_eff = load_exp_matrices(DATA_DIR)
     plot_exp_matrices(exp_mats, exp_N_eff)
     gpt_cv = {}
-    for n_open in [1, 2, 3, 4]:
+    for n_open in [1, 2]:
         gpt_cv[n_open] = run_gpt_rank_sweep(
             exp_mats[n_open], N_eff=exp_N_eff[n_open],
             label=f'Experimental  {n_open}-slit',
@@ -191,7 +190,7 @@ if __name__ == '__main__':
     exp_N_eff['all'] = all_N_eff
 
     plot_exp_sweep(
-        gpt_cv, exp_N_eff,
+        gpt_cv, {1: exp_N_eff[1], 2: exp_N_eff[2], 'all': all_N_eff},
         suptitle=(
             f'GPT rank sweep -- Experimental data  |  {_N_FOLDS}-fold CV\n'
             f'phases: {{0, pi/2, pi}}^4 = 81 patterns  |  '
