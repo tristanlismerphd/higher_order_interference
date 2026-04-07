@@ -18,8 +18,10 @@ _K_RANGE_GPT  = range(1, 21)
 _N_REST_GPT   = 4
 _ALS_MAX_ITER = 500
 _ALS_TOL      = 1e-7
-_INSET_KS     = list(range(12, 19))   # K = 12..18 shown in inset
-_TABLE_KS     = [14, 15, 16, 17, 18]  # K values shown in summary table
+_INSET_KS       = list(range(12, 19))  # default inset range
+_INSET_KS_1SLIT = list(range(1, 6))   # inset for 1-slit panel
+_TABLE_KS       = [14, 15, 16, 17, 18]
+_TABLE_KS_1SLIT = [1, 2, 3, 4, 5]
 
 # -- Noise / CV helpers (inlined from rank_sweep_noisy) ----------------
 _N_FOLDS   = 10
@@ -41,11 +43,13 @@ def _resample_cols(mat, n_out):
 
 
 # -- Summary table helper ----------------------------------------------
-def _add_rank_table(ax, cv_results, ks):
-    """Add a K=14-18 summary table below ax."""
+def _add_rank_table(ax, cv_results, ks, table_ks=None):
+    """Add a summary table below ax."""
+    if table_ks is None:
+        table_ks = _TABLE_KS
     col_labels = ['K', 'Train (mean\u00b1std)', 'Test (mean\u00b1std)']
     cell_text = []
-    for K in _TABLE_KS:
+    for K in table_ks:
         if K not in cv_results:
             continue
         tr = cv_results[K]['train']
@@ -226,8 +230,10 @@ def plot_gpt_sweep(cv_dict, mats_N, suptitle):
         ax.set_title(f'{title_lbl}  |  N_eff = {N_eff:.0f}', fontsize=13)
         ax.legend(fontsize=10, loc='lower left')
 
-        # -- Inset: K = 12-18 --
-        inset_idx  = [i for i, k in enumerate(ks) if k in _INSET_KS]
+        # -- Inset --
+        panel_inset_ks = _INSET_KS_1SLIT if n_open == 1 else _INSET_KS
+        panel_table_ks = _TABLE_KS_1SLIT if n_open == 1 else _TABLE_KS
+        inset_idx  = [i for i, k in enumerate(ks) if k in panel_inset_ks]
         inset_ks   = [ks[i] for i in inset_idx]
         inset_xpos = np.arange(len(inset_ks))
 
@@ -245,7 +251,7 @@ def plot_gpt_sweep(cv_dict, mats_N, suptitle):
         axins.tick_params(axis='y', labelsize=8)
         axins.set_xlabel('K', fontsize=9)
         axins.set_ylabel('chi2/pt', fontsize=9)
-        axins.set_title(f'K = {_INSET_KS[0]}-{_INSET_KS[-1]}', fontsize=9, pad=3)
+        axins.set_title(f'K = {panel_inset_ks[0]}-{panel_inset_ks[-1]}', fontsize=9, pad=3)
         inset_vals = (
             [tr_means[i] - tr_stds[i] for i in inset_idx] +
             [te_means[i] - te_stds[i] for i in inset_idx] +
@@ -256,7 +262,7 @@ def plot_gpt_sweep(cv_dict, mats_N, suptitle):
         pad_v  = max((hi - lo) * 0.15, 0.05)
         axins.set_ylim(lo - pad_v, hi + pad_v)
 
-        _add_rank_table(ax, cv_dict[n_open], ks)
+        _add_rank_table(ax, cv_dict[n_open], ks, table_ks=panel_table_ks)
 
     fig.suptitle(suptitle, fontsize=13)
     plt.tight_layout()

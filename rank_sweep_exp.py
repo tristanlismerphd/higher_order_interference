@@ -11,8 +11,9 @@ import time
 from joblib import Parallel, delayed
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from rank_sweep_gpt import (
-    gpt_als_fit, run_gpt_rank_sweep, _INSET_KS, _K_RANGE_GPT, _N_FOLDS,
-    _poisson_sigma, _resample_cols, N_PX_SWEEP, _TABLE_KS, _add_rank_table,
+    gpt_als_fit, run_gpt_rank_sweep, _INSET_KS, _INSET_KS_1SLIT,
+    _K_RANGE_GPT, _N_FOLDS, _poisson_sigma, _resample_cols, N_PX_SWEEP,
+    _TABLE_KS, _TABLE_KS_1SLIT, _add_rank_table,
 )
 
 # SET THIS to your local data directory
@@ -135,7 +136,9 @@ def plot_exp_sweep(cv_dict, exp_N_eff, suptitle):
         ax.set_ylabel('chi2/pt', fontsize=12)
         ax.set_title(f'{title_lbl}  |  N_eff = {N_eff:.2e}', fontsize=13)
         ax.legend(fontsize=10, loc='lower left')
-        inset_idx  = [i for i, k in enumerate(ks) if k in _INSET_KS]
+        panel_inset_ks = _INSET_KS_1SLIT if n_open == 1 else _INSET_KS
+        panel_table_ks = _TABLE_KS_1SLIT if n_open == 1 else _TABLE_KS
+        inset_idx  = [i for i, k in enumerate(ks) if k in panel_inset_ks]
         inset_ks   = [ks[i] for i in inset_idx]
         inset_xpos = np.arange(len(inset_ks))
         axins = inset_axes(ax, width='55%', height='58%',
@@ -152,7 +155,7 @@ def plot_exp_sweep(cv_dict, exp_N_eff, suptitle):
         axins.tick_params(axis='y', labelsize=8)
         axins.set_xlabel('K', fontsize=9)
         axins.set_ylabel('chi2/pt', fontsize=9)
-        axins.set_title(f'K = {_INSET_KS[0]}-{_INSET_KS[-1]}', fontsize=9, pad=3)
+        axins.set_title(f'K = {panel_inset_ks[0]}-{panel_inset_ks[-1]}', fontsize=9, pad=3)
         inset_vals = (
             [tr_means[i] - tr_stds[i] for i in inset_idx] +
             [te_means[i] - te_stds[i] for i in inset_idx] +
@@ -163,7 +166,7 @@ def plot_exp_sweep(cv_dict, exp_N_eff, suptitle):
         pad_v  = max((hi - lo) * 0.15, 0.05)
         axins.set_ylim(lo - pad_v, hi + pad_v)
 
-        _add_rank_table(ax, cv_dict[n_open], ks)
+        _add_rank_table(ax, cv_dict[n_open], ks, table_ks=panel_table_ks)
 
     fig.suptitle(suptitle, fontsize=13)
     plt.tight_layout()
