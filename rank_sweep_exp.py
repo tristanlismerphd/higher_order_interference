@@ -1,6 +1,6 @@
 # rank_sweep_exp.py
 # GPT rank sweep on EXPERIMENTAL data.
-# Last change: added EXP_N_EFF_SCALE; CV reverted to random (row,pixel) pairs
+# Last change: reduced EXP_N_EFF_SCALE 0.1 -> 0.001 to suppress systematics
 # Files: {slit_idx}_{phase_idx}.txt  (1024x1024 camera frames)
 # Slit encoding: O=open, X=closed
 # Phase encoding: 81 patterns = {0, pi/2, pi}^4
@@ -18,7 +18,7 @@ from rank_sweep_gpt import (
 )
 
 # Scale factor applied to N_eff before fitting (tune to get chi2/pt ~ 1 at true rank)
-EXP_N_EFF_SCALE = 0.1
+EXP_N_EFF_SCALE = 0.001
 
 # SET THIS to your local data directory
 DATA_DIR = (
