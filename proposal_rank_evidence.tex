@@ -12,9 +12,7 @@
 \hypersetup{colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue}
 
 \title{\textbf{Proposal: GPT Rank as Evidence Against Higher-Order Interference}\\[0.5em]
-\large Using a Stacked Multi-Slit Intensity Matrix}
-\author{Tristan Lismer\\
-Institute for Quantum Computing, University of Waterloo}
+\author{Tristan Lismer, Ro Lee, Kevin Resch}}
 \date{\today}
 
 \begin{document}
@@ -41,45 +39,62 @@ interference.
 % ─────────────────────────────────────────────────────────────────
 \section{Background}
 
-\subsection{Higher-order interference}
+\subsection{Historical approach: the Sorkin measure}
 
 Sorkin~\cite{sorkin1994} introduced a quantitative measure $I_3$ of third-order
-interference.  Classical probability theory satisfies $I_3 = 0$ identically;
-standard QM also satisfies $I_3 = 0$, while generalized probabilistic theories
-(GPTs) in principle allow $I_3 \neq 0$.  Ruling out $I_3 \neq 0$ experimentally is
-therefore a direct test of the Born rule and a discriminator between QM and
-post-quantum theories.
+interference.  Standard QM satisfies $I_3 = 0$; experimental tests~\cite{sinha2010}
+have confirmed this to high precision by directly measuring the deviation of
+three-slit intensities from the sum of one- and two-slit terms.  While powerful,
+this approach is tied to a specific functional form of higher-order interference
+and assumes QM as the background theory within which $I_3$ is defined.
+
+\subsection{A broader question: what theory does nature use?}
+
+The framework of Generalised Probabilistic Theories (GPTs) asks a more fundamental
+question: rather than testing a specific deviation from QM, can we determine
+\emph{which} probabilistic theory nature actually obeys, using only the operational
+data?  In the GPT framework, a physical theory is characterised by its state space
+and the dimension of that space.  Higher-order interference is not a small
+correction to QM---it is a structural property that certain post-quantum theories
+possess and QM does not.  If nature allowed higher-order interference, it would
+mean that the state space of a multi-slit system has more degrees of freedom than
+QM's density matrix can account for.
 
 \subsection{GPT rank as a probe}
 
-For an $n$-slit system described by a density matrix $\rho \in \mathcal{M}_{n}(\mathbb{C})$,
+In this work we use the \emph{rank} of the measured intensity matrix as a
+theory-agnostic probe of the state space dimension.  For an $n$-slit system
+described by a density matrix $\rho \in \mathcal{M}_{n}(\mathbb{C})$,
 the Born-rule intensity at pixel $j$ under slit-transmission amplitudes
 $\mathbf{a}$ and phases $\boldsymbol{\phi}$ is
 \begin{equation}
     I_j(\mathbf{a},\boldsymbol{\phi})
-    = \sum_{k,\ell} a_k a_\ell \,\rho_{k\ell}\, e^{i(\phi_k-\phi_\ell)} f_{kj}^* f_{\ell j},
+    = \sum_{k,\ell} a_k a_\ell \,\rho_{k\ell}\, e^{i(\phi_k-\phi_\ell)} f_{kj}^* f_{\ell j}.
 \end{equation}
-where $f_{kj}$ is the free-space propagator from slit $k$ to pixel $j$.  Because
-$I_j$ is a linear function of $\rho$, the intensity matrix $\mathbf{D}$ (rows =
+Because $I_j$ is linear in $\rho$, the intensity matrix $\mathbf{D}$ (rows =
 settings, columns = pixels) satisfies
 \begin{equation}
     \mathrm{rank}(\mathbf{D}) \leq n^2 - 1
     \label{eq:rank_qm}
 \end{equation}
-for \emph{any} fixed slit subset, since $\rho$ has $n^2 - 1$ real degrees of
-freedom (the $-1$ from $\mathrm{Tr}\,\rho = 1$).
+for any fixed slit subset, since $\rho$ has $n^2 - 1$ real degrees of freedom.
+A post-quantum theory with a larger state space would require
+$\mathrm{rank}(\mathbf{D}) > n^2 - 1$.
 
-Crucially, the $I_3 = 0$ condition of QM implies that three- and four-slit
-intensity patterns are \emph{linear combinations} of two-slit patterns.  Therefore
-the column space of $\mathbf{D}_3$ and $\mathbf{D}_4$ is contained within the
-column space of $\mathbf{D}_2$, giving the stronger prediction
+The key prediction of QM is stronger than just a rank bound on individual matrices.
+Because QM requires all multi-slit interference to decompose into two-slit terms,
+the column space of $\mathbf{D}_3$ and $\mathbf{D}_4$ is entirely contained within
+the column space of $\mathbf{D}_2$:
 \begin{equation}
     \mathrm{rank}(\mathbf{D}_{\mathrm{all}}) = \mathrm{rank}(\mathbf{D}_2) = n^2 - 1.
     \label{eq:rank_equal}
 \end{equation}
-A theory with $I_3 \neq 0$ would produce 3- or 4-slit patterns with components
-\emph{orthogonal} to the 2-slit subspace, violating Eq.~\eqref{eq:rank_equal}:
+A post-quantum theory admitting higher-order interference would produce 3- or
+4-slit patterns with components \emph{orthogonal} to the 2-slit subspace,
+violating Eq.~\eqref{eq:rank_equal}:
 $\mathrm{rank}(\mathbf{D}_{\mathrm{all}}) > \mathrm{rank}(\mathbf{D}_2)$.
+Measuring this rank equality is therefore a direct, theory-agnostic test of
+whether higher-order interference is a property of nature.
 
 % ─────────────────────────────────────────────────────────────────
 \section{The Old Approach and Its Limitation}
