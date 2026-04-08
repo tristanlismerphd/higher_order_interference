@@ -3,6 +3,8 @@
 #  GPT rank sweep -- structured model D_ij = u_i * V[j,:]
 #  where u_i is a per-row K-vector with u_i[0] = 1.
 #  (K=1-20, 10-fold CV, parallelised)
+#
+#  Last change: CV now folds over rows (not random pixel pairs)
 # ============================================================
 import numpy as np
 import matplotlib.pyplot as plt
