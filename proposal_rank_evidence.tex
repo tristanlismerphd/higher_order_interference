@@ -22,15 +22,20 @@ Institute for Quantum Computing, University of Waterloo}
 
 \begin{abstract}
 We propose a matrix-rank-based test for higher-order (Sorkin) interference using
-multi-slit optical experiments.  Standard quantum mechanics (QM) predicts that the
-state space of an $n$-slit system is $(n^2-1)$-dimensional; any theory with genuine
-third- or higher-order interference would require additional dimensions.  We show
-that by stacking intensity measurements from \emph{all} slit-subset configurations
-into a single matrix, the rank test becomes conclusive with only three relative
-phases $\{0,\pi/2,\pi\}$ per slit---a minimal and experimentally accessible set.
-Preliminary results on both simulated and experimental data are consistent with
-$\mathrm{rank} = 15 = n^2 - 1$ for a four-slit system, providing evidence against
-higher-order interference.
+multi-slit optical experiments.  The Born rule requires that all multi-slit
+interference decomposes into sums of two-slit terms ($I_3 = 0$); as a consequence,
+the intensity patterns from three- and four-slit configurations span \emph{no new
+dimensions} beyond those already spanned by two-slit configurations.  This predicts
+$\mathrm{rank}(\mathbf{D}_{\mathrm{all}}) = \mathrm{rank}(\mathbf{D}_2) = n^2 - 1$,
+where $\mathbf{D}_{\mathrm{all}}$ stacks measurements from all slit-subset
+configurations.  A theory admitting higher-order interference would violate this
+equality: $\mathrm{rank}(\mathbf{D}_{\mathrm{all}}) > \mathrm{rank}(\mathbf{D}_2)$.
+We show that the stacked-matrix approach yields a conclusive rank test with only
+three relative phases $\{0,\pi/2,\pi\}$ per slit---a minimal and experimentally
+accessible set.  Preliminary results on simulated data confirm
+$\mathrm{rank}(\mathbf{D}_{\mathrm{all}}) = \mathrm{rank}(\mathbf{D}_2) = 15 = n^2-1$
+for a four-slit system ($n=4$), consistent with the absence of higher-order
+interference.
 \end{abstract}
 
 % ─────────────────────────────────────────────────────────────────
@@ -54,16 +59,27 @@ $\mathbf{a}$ and phases $\boldsymbol{\phi}$ is
     I_j(\mathbf{a},\boldsymbol{\phi})
     = \sum_{k,\ell} a_k a_\ell \,\rho_{k\ell}\, e^{i(\phi_k-\phi_\ell)} f_{kj}^* f_{\ell j},
 \end{equation}
-where $f_{kj}$ is the free-space propagator from slit $k$ to pixel $j$.  Arranging
-intensity vectors for all settings as rows of a matrix $\mathbf{D}$, standard QM
-predicts
+where $f_{kj}$ is the free-space propagator from slit $k$ to pixel $j$.  Because
+$I_j$ is a linear function of $\rho$, the intensity matrix $\mathbf{D}$ (rows =
+settings, columns = pixels) satisfies
 \begin{equation}
-    \mathrm{rank}(\mathbf{D}) \leq n^2 - 1,
+    \mathrm{rank}(\mathbf{D}) \leq n^2 - 1
     \label{eq:rank_qm}
 \end{equation}
-where the $-1$ arises from the normalisation constraint $\mathrm{Tr}\,\rho = 1$.
-A GPT allowing higher-order interference would generically require
-$\mathrm{rank}(\mathbf{D}) > n^2 - 1$.
+for \emph{any} fixed slit subset, since $\rho$ has $n^2 - 1$ real degrees of
+freedom (the $-1$ from $\mathrm{Tr}\,\rho = 1$).
+
+Crucially, the $I_3 = 0$ condition of QM implies that three- and four-slit
+intensity patterns are \emph{linear combinations} of two-slit patterns.  Therefore
+the column space of $\mathbf{D}_3$ and $\mathbf{D}_4$ is contained within the
+column space of $\mathbf{D}_2$, giving the stronger prediction
+\begin{equation}
+    \mathrm{rank}(\mathbf{D}_{\mathrm{all}}) = \mathrm{rank}(\mathbf{D}_2) = n^2 - 1.
+    \label{eq:rank_equal}
+\end{equation}
+A theory with $I_3 \neq 0$ would produce 3- or 4-slit patterns with components
+\emph{orthogonal} to the 2-slit subspace, violating Eq.~\eqref{eq:rank_equal}:
+$\mathrm{rank}(\mathbf{D}_{\mathrm{all}}) > \mathrm{rank}(\mathbf{D}_2)$.
 
 % ─────────────────────────────────────────────────────────────────
 \section{The Old Approach and Its Limitation}
@@ -140,16 +156,22 @@ exercises all off-diagonal elements $\rho_{k\ell}$ systematically.
 
 \subsection{The key claim}
 
-If $\mathrm{rank}(\mathbf{D}_{\mathrm{all}}) = 15$, this simultaneously confirms:
+If $\mathrm{rank}(\mathbf{D}_{\mathrm{all}}) = \mathrm{rank}(\mathbf{D}_2) = 15$,
+this simultaneously confirms:
 \begin{enumerate}
+    \item Three- and four-slit intensity patterns are entirely expressible as
+          linear combinations of two-slit patterns---the defining signature of
+          $I_3 = 0$ (no higher-order interference).
     \item The full state space of the four-slit system is $(n^2-1)$-dimensional,
-          consistent with QM.
-    \item No additional dimension is required to describe three- or four-slit
-          interference---higher-order terms, if present, leave no detectable
-          footprint in the data.
+          consistent with QM and the Born rule.
     \item The result is obtained with three phases per slit, making it directly
-          applicable to the existing experimental dataset.
+          applicable to the existing experimental dataset without requiring a
+          fourth phase setting.
 \end{enumerate}
+Note that observing $\mathrm{rank}(\mathbf{D}_{\mathrm{all}}) = 15$ alone would
+\emph{not} be sufficient: it would only confirm the state-space dimension.  The
+key test is that stacking 3- and 4-slit rows does \emph{not} increase the rank
+beyond $\mathrm{rank}(\mathbf{D}_2)$.
 
 % ─────────────────────────────────────────────────────────────────
 \section{The Role of rank($\mathbf{D}_1$)}
@@ -193,11 +215,11 @@ with Poisson-weighted residuals
 \end{equation}
 where $p_0 = 0.01$ is a floor to prevent division by zero.
 
-Rank selection uses 10-fold cross-validation \textbf{folded over rows}: rows are
-randomly partitioned into 10 folds; each fold is held out as the test set in turn.
-Folding over rows---rather than random pixel pairs---means that the model must
-generalise to \emph{unseen experimental settings}, making it sensitive to
-overfitting of pixel-level systematic noise correlated across settings.
+Rank selection uses 10-fold cross-validation over randomly assigned \textbf{(row, pixel) pairs}:
+all $N_s \times N_{\mathrm{px}}$ entries are randomly partitioned into 10 folds; each fold
+is held out as the test set in turn.  Each row therefore contributes pixels to both
+training and test, ensuring that the per-row factors $u_i$ are well-determined during
+training and evaluated on genuinely held-out pixels.
 
 The true rank appears as the value of $K$ at which the test $\chi^2/\mathrm{pt}$
 reaches a minimum near~1 (i.e.\ the model fits the data within Poisson noise
@@ -273,10 +295,10 @@ $K$ & Train & Test & Train & Test \\
           8-fold CV; this will provide an independent, higher-powered test of the
           four-slit rank.
 
-    \item \textbf{Claim:}  If $\mathrm{rank}(\mathbf{D}_{\mathrm{all}}) = 15$ is
-          confirmed on experimental data, it constitutes evidence that all multi-slit
-          interference in this system is consistent with quantum mechanics and
-          inconsistent with theories admitting higher-order interference.
+    \item \textbf{Claim:}  If $\mathrm{rank}(\mathbf{D}_{\mathrm{all}}) = \mathrm{rank}(\mathbf{D}_2) = 15$
+          is confirmed on experimental data, it constitutes evidence that all multi-slit
+          interference in this system decomposes into two-slit terms, consistent with
+          $I_3 = 0$ and the Born rule.
 \end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────
