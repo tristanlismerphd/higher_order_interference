@@ -31,6 +31,9 @@ env/
 .vscode/
 .idea/
 
+# LaTeX output folder
+out/
+
 # LaTeX auxiliary files
 *.aux
 *.log
