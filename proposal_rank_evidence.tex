@@ -99,12 +99,14 @@ whether higher-order interference is a property of nature.
 % ─────────────────────────────────────────────────────────────────
 \section{Experimental Setup}
 
-The interferometer is a four-path optical network built from beam splitters
-(H1--H8), as shown in Figure~\ref{fig:setup}.  A laser is split into four
-arms; each arm passes through a shutter (allowing it to be independently
-opened or closed) and a phase controller ($\Phi$) that sets the relative phase
-of that path.  The four arms are then recombined and the output intensity
-pattern is recorded on an electron-multiplying ICCD (emICCD) camera.
+The interferometer is a four-path optical network built from eight beam splitters
+(H1--H8), as shown in Figure~\ref{fig:setup}.  A laser enters the network and
+is successively split into four vertical arms by beam splitters H1--H4 on the
+lower rail.  Each arm contains a shutter (Shutter 1--4) that independently
+opens or closes the path, followed by a phase controller ($\Phi_1$--$\Phi_4$)
+that sets the relative phase of that arm.  The four arms are recombined by beam
+splitters H5--H8 on the upper rail, and the output intensity pattern is recorded
+on an electron-multiplying ICCD (emICCD) camera.
 
 By selectively opening subsets of the four shutters and cycling through all
 phase combinations $\{0, \pi/2, \pi\}^4 = 81$ patterns, we construct the full
@@ -117,9 +119,10 @@ used in the rank analysis.
         \textit{[Insert experimental setup diagram]}
     }}
     \caption{Schematic of the four-path interferometer.  A laser is split into
-    four arms via beam splitters (H1--H8).  Each arm contains a shutter and a
-    phase controller ($\Phi$).  The recombined output is recorded on an emICCD
-    camera.}
+    four arms by beam splitters H1--H4 (lower rail).  Each arm contains a shutter
+    (Shutter 1--4) and a phase controller ($\Phi_1$--$\Phi_4$).  The arms are
+    recombined by beam splitters H5--H8 (upper rail) and the output is recorded
+    on an emICCD camera.}
     \label{fig:setup}
 \end{figure}
 
