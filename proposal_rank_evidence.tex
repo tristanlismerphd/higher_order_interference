@@ -314,6 +314,24 @@ $K$ & Train & Test & Train & Test \\
 \end{table}
 
 % ─────────────────────────────────────────────────────────────────
+\section{Experimental Results: Classical Light}
+
+Figure~\ref{fig:rank_sweep_exp} shows the 10-fold CV $\chi^2/\mathrm{pt}$ for
+$K = 1\text{--}20$ on experimental data taken with classical (coherent laser) light.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{results_experiment.png}
+    \caption{GPT rank sweep on experimental classical light data, 10-fold CV.
+    Each panel shows train (blue) and test (red) $\chi^2/\mathrm{pt}$ vs.\ rank $K$,
+    with an inset zoom and summary table.
+    \textit{Left:} 1-slit.
+    \textit{Centre:} 2-slit.
+    \textit{Right:} All configs (1+2+3+4-slit stacked).}
+    \label{fig:rank_sweep_exp}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────
 \section{Roadmap}
 
 \begin{enumerate}
