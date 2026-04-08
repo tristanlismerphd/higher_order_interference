@@ -30,3 +30,19 @@ env/
 # IDEs
 .vscode/
 .idea/
+
+# LaTeX auxiliary files
+*.aux
+*.log
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.out
+*.bbl
+*.blg
+*.lof
+*.lot
+*.idx
+*.ind
+*.ilg
