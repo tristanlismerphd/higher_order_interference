@@ -241,7 +241,7 @@ reaches a minimum near~1 (i.e.\ the model fits the data within Poisson noise
 without overfitting).
 
 % ─────────────────────────────────────────────────────────────────
-\section{Preliminary Results}
+\section{Theoretical Results}
 
 Figure~\ref{fig:rank_sweep} shows the 10-fold CV $\chi^2/\mathrm{pt}$ for
 $K = 1\text{--}20$ on simulated (Poisson-noisy) theory data.
@@ -286,32 +286,31 @@ $K$ & Train & Test & Train & Test \\
 \end{table}
 
 % ─────────────────────────────────────────────────────────────────
-\section{Summary and Next Steps}
+\section{Roadmap}
 
 \begin{enumerate}
-    \item \textbf{Theoretical prediction confirmed (simulation):}
-          $\mathrm{rank}(\mathbf{D}_{\mathrm{all}}) = 15$ on noise-free simulated data,
-          with clean CV minimum at $K=15$.
+    \item \textcolor{green!60!black}{\textbf{[Done] Theory: }}
+          $\mathrm{rank}(\mathbf{D}_2) = \mathrm{rank}(\mathbf{D}_{\mathrm{all}}) = 15$
+          confirmed on simulated Poisson-noisy data (Figure~\ref{fig:rank_sweep},
+          Table~\ref{tab:cv_results}).  The test $\chi^2/\mathrm{pt}$ minimum at $K=15$
+          is sharp and consistent across both panels.
 
-    \item \textbf{Minimal phase requirement:}  The stacked approach achieves this
-          with $p = 3$ phases, avoiding the experimental overhead of a fourth phase
-          setting.
+    \item \textbf{Experimental classical light:}
+          Run the same GPT rank sweep on experimental camera data (coherent laser source).
+          Goal: confirm $\mathrm{rank}(\mathbf{D}_2) = \mathrm{rank}(\mathbf{D}_{\mathrm{all}}) = 15$
+          on real optical data.
 
-    \item \textbf{Experimental data (in progress):}  The same pipeline is running
-          on experimental camera frames.  The effective photon number is scaled by a
-          factor $\varepsilon = 0.1$ to account for systematic noise dominating the
-          shot-noise floor; this is a known limitation to be addressed by a
-          dedicated noise model.
+    \item \textbf{Single-photon source:}
+          Bring the gated single-photon camera online.  This requires characterising
+          the detector timing, dark counts, and coincidence window to ensure
+          shot-noise-limited operation.
 
-    \item \textbf{Cluster computation (pending):}  A SLURM job array (800 tasks) is
-          queued on Compute Canada to run the full sweep with $p = 4$ phases and
-          8-fold CV; this will provide an independent, higher-powered test of the
-          four-slit rank.
-
-    \item \textbf{Claim:}  If $\mathrm{rank}(\mathbf{D}_{\mathrm{all}}) = \mathrm{rank}(\mathbf{D}_2) = 15$
-          is confirmed on experimental data, it constitutes evidence that all multi-slit
-          interference in this system decomposes into two-slit terms, consistent with
-          $I_3 = 0$ and the Born rule.
+    \item \textbf{Experimental quantum light:}
+          Repeat the rank sweep with single photons.  A result of
+          $\mathrm{rank}(\mathbf{D}_{\mathrm{all}}) = \mathrm{rank}(\mathbf{D}_2) = 15$
+          in the single-photon regime would constitute direct evidence that higher-order
+          interference is absent in quantum light, and that nature's state space is
+          consistent with QM rather than a post-quantum GPT.
 \end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────
