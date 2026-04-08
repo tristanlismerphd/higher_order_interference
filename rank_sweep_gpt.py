@@ -4,7 +4,8 @@
 #  where u_i is a per-row K-vector with u_i[0] = 1.
 #  (K=1-20, 10-fold CV, parallelised)
 #
-#  Last change: CV now folds over rows (not random pixel pairs)
+#  Last change: reverted CV to random (row,pixel) pairs
+#               (row-fold CV zeroed u_i for test rows -> degenerate test chi2)
 # ============================================================
 import numpy as np
 import matplotlib.pyplot as plt
@@ -175,10 +176,8 @@ def run_gpt_rank_sweep(data_mat, N_eff, label='', n_jobs=-1):
     sweep_reg     = max(ALS_REG, N_eff * 1e-6)
 
     rng_cv   = np.random.default_rng(RANDOM_SEED)
-    row_perm = rng_cv.permutation(n_rows)
-    fold_ids = np.zeros((n_rows, n_pix), dtype=int)
-    for i, r in enumerate(row_perm):
-        fold_ids[r, :] = i % _N_FOLDS
+    flat_idx = rng_cv.permutation(n_rows * n_pix)
+    fold_ids = (flat_idx % _N_FOLDS).reshape(n_rows, n_pix)
 
     ks = list(_K_RANGE_GPT)
     print(f'\n-- GPT {label}  ({n_rows}x{n_pix},  N_eff={N_eff:.1f},  reg={sweep_reg:.2e}) --')

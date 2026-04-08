@@ -1,6 +1,6 @@
 # rank_sweep_exp.py
 # GPT rank sweep on EXPERIMENTAL data.
-# Last change: added EXP_N_EFF_SCALE; CV folds over rows (inherited from rank_sweep_gpt)
+# Last change: added EXP_N_EFF_SCALE; CV reverted to random (row,pixel) pairs
 # Files: {slit_idx}_{phase_idx}.txt  (1024x1024 camera frames)
 # Slit encoding: O=open, X=closed
 # Phase encoding: 81 patterns = {0, pi/2, pi}^4
