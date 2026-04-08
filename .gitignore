@@ -13,6 +13,7 @@ env/
 # Output / generated files
 *.png
 !results_theory.png
+!setup_diagram.png
 *.pdf
 *.svg
 *.npy

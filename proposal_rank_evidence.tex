@@ -99,19 +99,26 @@ whether higher-order interference is a property of nature.
 % ─────────────────────────────────────────────────────────────────
 \section{Experimental Setup}
 
-The interferometer consists of four optical rails, each equipped with an
-independently controllable shutter and phase controller.  This allows any subset
-of the four paths to be opened or closed, and any combination of relative phases
-$\{0, \pi/2, \pi\}$ to be applied per rail, giving access to all 15 non-trivial
-slit configurations and 81 phase patterns used in the rank analysis.
+The interferometer is a four-path optical network built from beam splitters
+(H1--H8), as shown in Figure~\ref{fig:setup}.  A laser is split into four
+arms; each arm passes through a shutter (allowing it to be independently
+opened or closed) and a phase controller ($\Phi$) that sets the relative phase
+of that path.  The four arms are then recombined and the output intensity
+pattern is recorded on an electron-multiplying ICCD (emICCD) camera.
+
+By selectively opening subsets of the four shutters and cycling through all
+phase combinations $\{0, \pi/2, \pi\}^4 = 81$ patterns, we construct the full
+intensity matrix $\mathbf{D}$ covering all 15 non-trivial slit configurations
+used in the rank analysis.
 
 \begin{figure}[H]
     \centering
     \fbox{\parbox[c][6cm][c]{0.92\textwidth}{\centering
         \textit{[Insert experimental setup diagram]}
     }}
-    \caption{Schematic of the four-rail interferometer.  Each path contains a
-    shutter (open/closed) and a phase controller.  The output is recorded on a
+    \caption{Schematic of the four-path interferometer.  A laser is split into
+    four arms via beam splitters (H1--H8).  Each arm contains a shutter and a
+    phase controller ($\Phi$).  The recombined output is recorded on an emICCD
     camera.}
     \label{fig:setup}
 \end{figure}
