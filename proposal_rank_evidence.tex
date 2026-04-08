@@ -11,7 +11,7 @@
 
 \hypersetup{colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue}
 
-\title{\textbf{Proposal: GPT Rank as Evidence Against Higher-Order Interference}\\[0.5em]
+\title{\textbf{GPT Rank as Evidence Against Higher-Order Interference}\\[0.5em]
 \author{Tristan Lismer, Ro Lee, Kevin Resch}}
 \date{\today}
 
@@ -248,19 +248,17 @@ $K = 1\text{--}20$ on simulated (Poisson-noisy) theory data.
 
 \begin{figure}[H]
     \centering
-    % Replace the path below with your actual figure file, e.g.:
-    % \includegraphics[width=\textwidth]{rank_sweep_theory.png}
-    \fbox{\parbox[c][8cm][c]{0.92\textwidth}{\centering
-        \textit{[Insert figure: GPT rank sweep --- 1-slit, 2-slit, all-configs]}\\[0.5em]
-        \small Three panels (1$\times$3): left = 1-slit, centre = 2-slit,
-        right = all-configs.\\
-        Each panel: train (blue) and test (red) $\chi^2/\mathrm{pt}$ vs.\ rank $K$,
-        with inset zoom and summary table.
-    }}
-    \caption{GPT rank sweep on simulated data with Poisson noise ($N_\mathrm{eff}=50{,}000$).
-    The test $\chi^2/\mathrm{pt}$ minimum near $K=15$ in the 2-slit and all-configs panels
-    is consistent with the QM prediction $\mathrm{rank} = n^2-1 = 15$.
-    The 1-slit panel saturates at $K=1$, confirming the apparatus calibration.}
+    \includegraphics[width=\textwidth]{results_theory.png}
+    \caption{GPT rank sweep on simulated data with Poisson noise ($N_\mathrm{eff}=50{,}000$),
+    phases $\{0,\pi/2,\pi\}^4 = 81$ patterns, 10-fold CV.
+    Each panel shows train (blue) and test (red) $\chi^2/\mathrm{pt}$ vs.\ rank $K$,
+    with an inset zoom and summary table.
+    \textit{Left:} 1-slit --- test $\chi^2/\mathrm{pt}$ saturates at $K=1$, confirming
+    the single-slit state is rank-1 (apparatus calibration).
+    \textit{Centre:} 2-slit --- test minimum at $K=15$.
+    \textit{Right:} All configs (1+2+3+4-slit stacked) --- test minimum also at $K=15$.
+    Both are consistent with $\mathrm{rank}(\mathbf{D}_{\mathrm{all}}) =
+    \mathrm{rank}(\mathbf{D}_2) = n^2-1 = 15$, the QM prediction.}
     \label{fig:rank_sweep}
 \end{figure}
 
@@ -276,15 +274,15 @@ Key observations from the inset tables (reproduced in Table~\ref{tab:cv_results}
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}
 $K$ & Train & Test & Train & Test \\
 \midrule
-14 & \multicolumn{1}{c}{---} & \multicolumn{1}{c}{---} & \multicolumn{1}{c}{---} & \multicolumn{1}{c}{---} \\
-15 & \multicolumn{1}{c}{---} & \multicolumn{1}{c}{---} & \multicolumn{1}{c}{---} & \multicolumn{1}{c}{---} \\
-16 & \multicolumn{1}{c}{---} & \multicolumn{1}{c}{---} & \multicolumn{1}{c}{---} & \multicolumn{1}{c}{---} \\
-17 & \multicolumn{1}{c}{---} & \multicolumn{1}{c}{---} & \multicolumn{1}{c}{---} & \multicolumn{1}{c}{---} \\
-18 & \multicolumn{1}{c}{---} & \multicolumn{1}{c}{---} & \multicolumn{1}{c}{---} & \multicolumn{1}{c}{---} \\
+14 & $0.1930 \pm 0.0004$ & $0.2225 \pm 0.0036$ & $0.1976 \pm 0.0003$ & $0.2214 \pm 0.0025$ \\
+15 & $0.1842 \pm 0.0004$ & $\mathbf{0.2179 \pm 0.0037}$ & $0.1865 \pm 0.0003$ & $\mathbf{0.2111 \pm 0.0024}$ \\
+16 & $0.1819 \pm 0.0004$ & $0.2210 \pm 0.0036$ & $0.1849 \pm 0.0003$ & $0.2133 \pm 0.0024$ \\
+17 & $0.1797 \pm 0.0004$ & $0.2240 \pm 0.0037$ & $0.1832 \pm 0.0003$ & $0.2155 \pm 0.0024$ \\
+18 & $0.1775 \pm 0.0004$ & $0.2273 \pm 0.0035$ & $0.1816 \pm 0.0003$ & $0.2178 \pm 0.0026$ \\
 \bottomrule
 \end{tabular}
 \vspace{0.5em}\\
-\small \textit{Fill in values from the rank sweep output tables.}
+\small \textbf{Bold} marks the test minimum (lowest test $\chi^2/\mathrm{pt}$), occurring at $K=15$ for both panels.
 \end{table}
 
 % ─────────────────────────────────────────────────────────────────

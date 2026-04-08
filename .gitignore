@@ -12,6 +12,7 @@ env/
 
 # Output / generated files
 *.png
+!results_theory.png
 *.pdf
 *.svg
 *.npy
