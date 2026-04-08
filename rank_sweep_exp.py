@@ -16,6 +16,9 @@ from rank_sweep_gpt import (
     _TABLE_KS, _TABLE_KS_1SLIT, _add_rank_table,
 )
 
+# Scale factor applied to N_eff before fitting (tune to get chi2/pt ~ 1 at true rank)
+EXP_N_EFF_SCALE = 0.1
+
 # SET THIS to your local data directory
 DATA_DIR = (
     '/Users/tristan_lismer/Desktop/PhD/Research/'
@@ -178,13 +181,13 @@ if __name__ == '__main__':
     gpt_cv = {}
     for n_open in [1, 2]:
         gpt_cv[n_open] = run_gpt_rank_sweep(
-            exp_mats[n_open], N_eff=exp_N_eff[n_open],
+            exp_mats[n_open], N_eff=exp_N_eff[n_open] * EXP_N_EFF_SCALE,
             label=f'Experimental  {n_open}-slit',
         )
     all_mat = np.vstack([exp_mats[n] for n in [1, 2, 3, 4]])
     all_N_eff = float(np.mean(list(exp_N_eff.values())))
     gpt_cv['all'] = run_gpt_rank_sweep(
-        all_mat, N_eff=all_N_eff,
+        all_mat, N_eff=all_N_eff * EXP_N_EFF_SCALE,
         label='Experimental  all-configs',
     )
     exp_N_eff['all'] = all_N_eff
