@@ -292,8 +292,14 @@ $K$ & Train & Test & Train & Test \\
     \item \textcolor{green!60!black}{\textbf{[Done] Theory: }}
           $\mathrm{rank}(\mathbf{D}_2) = \mathrm{rank}(\mathbf{D}_{\mathrm{all}}) = 15$
           confirmed on simulated Poisson-noisy data (Figure~\ref{fig:rank_sweep},
-          Table~\ref{tab:cv_results}).  The test $\chi^2/\mathrm{pt}$ minimum at $K=15$
-          is sharp and consistent across both panels.
+          Table~\ref{tab:cv_results}).  For $K < 15$ the model underfits---the rank is
+          insufficient to capture all interference structure and test $\chi^2/\mathrm{pt}$
+          remains high.  At $K = 15$ the test $\chi^2/\mathrm{pt}$ reaches a minimum,
+          indicating the model explains the data without excess flexibility.  For $K > 15$
+          the model overfits---additional rank captures noise in the training pixels,
+          causing test $\chi^2/\mathrm{pt}$ to rise again.  This behaviour is consistent
+          across both the 2-slit and all-configs panels, with the minimum occurring at
+          $K = 15 = n^2 - 1$ in both cases.
 
     \item \textbf{Experimental classical light:}
           Run the same GPT rank sweep on experimental camera data (coherent laser source).
