@@ -112,7 +112,7 @@ def plot_data(mats, lbls, title_suffix):
         ax.set_yticks(np.arange(len(lbl)))
         ax.set_yticklabels(lbl, fontsize=7)
         fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, label='row-norm. intensity')
-    plt.suptitle(f'{title_suffix}  |  phases: {{0, π/2, π}}^4',
+    plt.suptitle(f'{title_suffix}  |  phases: {{0, π/4, π/2}}^4',
                  fontsize=16, y=1.002)
     plt.show()
 
