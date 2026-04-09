@@ -315,7 +315,7 @@ if __name__ == '__main__':
         suptitle=(
             f'GPT rank sweep -- s*phi_c*X*e model  |  '
             f'Theory + Poisson noise  |  {_N_FOLDS}-fold CV  |  N_eff={th_N_eff}\n'
-            f'phases: {{0, pi/2, pi}}^4 = 81 patterns  |  '
+            f'phases: {{0, pi/4, pi/2}}^4 = 81 patterns  |  '
             f'u_i[0]=1  |  Dashed: chi2/pt=1'
         ),
     )

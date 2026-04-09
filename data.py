@@ -16,11 +16,11 @@ KX_LIST     = [-20, -10, 10, 20]
 NUM_PIXELS  = 500
 x_grid      = np.linspace(-1.0, 1.0, NUM_PIXELS)
 
-# ── Phase patterns: {0, pi/2, pi}^4 = 81 settings for ALL slits ────────────
-phase_patterns = list(_prod([0.0, np.pi / 2, np.pi], repeat=4))
+# ── Phase patterns: {0, pi/4, pi/2}^4 = 81 settings for ALL slits ────────────
+phase_patterns = list(_prod([0.0, np.pi / 4, np.pi / 2], repeat=4))
 
 def _phase_label(combo):
-    labels = {0.0: '0', np.pi / 2: 'pi/2', np.pi: 'pi'}
+    labels = {0.0: '0', np.pi / 4: 'pi/4', np.pi / 2: 'pi/2'}
     return ','.join(labels.get(p, f'{p:.2f}') for p in combo)
 
 # ── Shutter labels (O=open, X=closed) ──────────────────────────────────
