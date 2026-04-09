@@ -21,8 +21,9 @@ from rank_sweep_gpt import (
 EXP_N_EFF_SCALE = 0.001
 
 # Crop threshold: columns where mean intensity across ALL rows < this value are dropped.
+# exp_mats rows sum to 1 over 1024 px, so mean col ~ 0.001; set ~2-3x that to trim dark edges.
 # Set to 0.0 to disable cropping.
-EXP_CROP_THRESHOLD = 0.05
+EXP_CROP_THRESHOLD = 0.002
 
 # SET THIS to your local data directory
 DATA_DIR = (
