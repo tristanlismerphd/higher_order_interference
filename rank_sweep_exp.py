@@ -206,6 +206,7 @@ if __name__ == '__main__':
         bright_mask = all_mat_full.mean(axis=0) >= EXP_CROP_THRESHOLD
         print(f'  Common crop mask: {bright_mask.sum()}/1024 columns kept')
         exp_mats = {n: exp_mats[n][:, bright_mask] for n in exp_mats}
+        plot_exp_matrices(exp_mats, exp_N_eff)
     gpt_cv = {}
     for n_open in [1, 2]:
         gpt_cv[n_open] = run_gpt_rank_sweep(
