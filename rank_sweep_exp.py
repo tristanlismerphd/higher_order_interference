@@ -17,6 +17,7 @@ from rank_sweep_gpt import (
     _TABLE_KS, _TABLE_KS_1SLIT, _add_rank_table,
 )
 from rank_sweep_joint import run_gpt_rank_sweep_joint
+from rank_sweep_structured import run_gpt_rank_sweep_structured, _K_RANGE_STRUCT, N2
 
 # Scale factor applied to N_eff before fitting (tune to get chi2/pt ~ 1 at true rank)
 EXP_N_EFF_SCALE = 0.001
@@ -58,24 +59,28 @@ def _load_one_row(data_dir, slit_idx, phase_idx):
 
 
 def load_exp_matrices(data_dir=DATA_DIR, n_jobs=-1):
+    """Returns (exp_mats, exp_N_eff, row_configs_dict).
+    row_configs_dict[n_open] = [(slit_idx, phase_idx), ...] for each valid row."""
     print('Loading experimental data...')
     t0 = time.time()
-    exp_mats, exp_N_eff = {}, {}
+    exp_mats, exp_N_eff, row_configs_dict = {}, {}, {}
     for n_open, slit_idxs in sorted(_N_OPEN_TO_SLIT_IDXS.items()):
         tasks = [(s, p) for s in slit_idxs for p in range(_N_PHASES)]
         results = Parallel(n_jobs=n_jobs)(
             delayed(_load_one_row)(data_dir, s, p) for s, p in tasks
         )
-        valid    = [(c, t) for c, t in results if c is not None]
-        col_sums = np.array([c for c, t in valid])
-        totals   = np.array([t for c, t in valid])
-        prob_mat = col_sums / totals[:, None]
-        exp_mats[n_open]  = prob_mat
-        exp_N_eff[n_open] = float(np.median(totals))
+        valid_idx = [i for i, (c, t) in enumerate(results) if c is not None]
+        valid     = [results[i] for i in valid_idx]
+        col_sums  = np.array([c for c, t in valid])
+        totals    = np.array([t for c, t in valid])
+        prob_mat  = col_sums / totals[:, None]
+        exp_mats[n_open]        = prob_mat
+        exp_N_eff[n_open]       = float(np.median(totals))
+        row_configs_dict[n_open] = [tasks[i] for i in valid_idx]
         print(f'  n_open={n_open}: {prob_mat.shape[0]} rows, '
               f'median N_eff = {exp_N_eff[n_open]:.3e}')
     print(f'  Done in {time.time() - t0:.1f}s')
-    return exp_mats, exp_N_eff
+    return exp_mats, exp_N_eff, row_configs_dict
 
 
 def _row_norm(mat):
@@ -182,8 +187,41 @@ def _crop_bright(mat, threshold=EXP_CROP_THRESHOLD):
     return mat[:, bright]
 
 
+def plot_structured_sweep(cv_dict, N_eff_display, suptitle):
+    """Plot structured-model sweep results (K=1..16)."""
+    import matplotlib.pyplot as plt
+    ks    = list(_K_RANGE_STRUCT)
+    x_pos = np.arange(len(ks))
+    width = 0.38
+    fig, axes = plt.subplots(1, 3, figsize=(33, 10))
+    fig.subplots_adjust(wspace=0.35)
+    for ax, n_open in zip(axes.flat, [1, 2, 'all']):
+        N_eff     = N_eff_display[n_open]
+        title_lbl = 'All configs' if n_open == 'all' else f'{n_open}-slit'
+        tr_means  = [np.mean(cv_dict[n_open][K]['train']) for K in ks]
+        tr_stds   = [np.std (cv_dict[n_open][K]['train']) for K in ks]
+        te_means  = [np.mean(cv_dict[n_open][K]['test'])  for K in ks]
+        te_stds   = [np.std (cv_dict[n_open][K]['test'])  for K in ks]
+        ax.bar(x_pos - width/2, tr_means, width, yerr=tr_stds, capsize=3,
+               color='steelblue', alpha=0.85, ecolor='navy', label='Train')
+        ax.bar(x_pos + width/2, te_means, width, yerr=te_stds, capsize=3,
+               color='tomato',    alpha=0.85, ecolor='darkred', label='Test')
+        ax.axhline(1.0, color='gray', linestyle='--', linewidth=1)
+        ax.axvline(x_pos[14] + 0.5, color='green', linestyle=':', linewidth=1.2,
+                   label='K=15 (QM)')
+        ax.set_xticks(x_pos)
+        ax.set_xticklabels([str(k) for k in ks], fontsize=9)
+        ax.set_xlabel('GPT rank K  (HS basis modes)', fontsize=12)
+        ax.set_ylabel('chi2/pt', fontsize=12)
+        ax.set_title(f'{title_lbl}  |  N_eff = {N_eff:.2e}', fontsize=13)
+        ax.legend(fontsize=10, loc='upper right')
+    fig.suptitle(suptitle, fontsize=13)
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
-    exp_mats, exp_N_eff = load_exp_matrices(DATA_DIR)
+    exp_mats, exp_N_eff, row_configs_dict = load_exp_matrices(DATA_DIR)
     plot_exp_matrices(exp_mats, exp_N_eff)
     all_mat_full = np.vstack([exp_mats[n] for n in [1, 2, 3, 4]])
     col_means = all_mat_full.mean(axis=0)
@@ -191,26 +229,26 @@ if __name__ == '__main__':
           f'max={col_means.max():.5f}, median={np.median(col_means):.5f}, '
           f'p90={np.percentile(col_means, 90):.5f}')
     if EXP_CROP_THRESHOLD > 0.0:
-        # Build a common bright mask from the all-configs matrix so every
-        # n_open group uses the same columns
         all_mat_full = np.vstack([exp_mats[n] for n in [1, 2, 3, 4]])
         bright_mask = all_mat_full.mean(axis=0) >= EXP_CROP_THRESHOLD
         print(f'  Common crop mask: {bright_mask.sum()}/1024 columns kept')
         exp_mats = {n: exp_mats[n][:, bright_mask] for n in exp_mats}
         plot_exp_matrices(exp_mats, exp_N_eff)
-    N_eff_scaled = {n: exp_N_eff[n] * EXP_N_EFF_SCALE for n in [1, 2, 3, 4]}
-    gpt_cv = run_gpt_rank_sweep_joint(
-        exp_mats, N_eff_scaled,
-        label='Experimental  all-configs (joint)',
-    )
-    all_N_eff = float(np.mean(list(exp_N_eff.values())))
 
-    plot_exp_sweep(
-        gpt_cv,
+    N_eff_scaled = {n: exp_N_eff[n] * EXP_N_EFF_SCALE for n in [1, 2, 3, 4]}
+    all_N_eff    = float(np.mean(list(exp_N_eff.values())))
+
+    # -- Structured sweep (shared rho + shared V, T_s from physics) -----------
+    struct_cv = run_gpt_rank_sweep_structured(
+        exp_mats, N_eff_scaled, row_configs_dict,
+        label='Experimental',
+    )
+    plot_structured_sweep(
+        struct_cv,
         {1: N_eff_scaled[1], 2: N_eff_scaled[2], 'all': all_N_eff * EXP_N_EFF_SCALE},
         suptitle=(
-            f'GPT rank sweep -- Experimental data  |  {_N_FOLDS}-fold CV  |  joint fit\n'
-            f'phases: {{0, pi/4, pi/2}}^4 = 81 patterns  |  '
-            f'shared V across all configs  |  Dashed: chi2/pt=1'
+            f'Structured GPT sweep -- Experimental data  |  {_N_FOLDS}-fold CV\n'
+            f'T_s from known slit mask + phases  |  shared rho + shared V  |  '
+            f'K=4: classical  K=15: full QM  |  Dashed: chi2/pt=1'
         ),
     )
