@@ -283,9 +283,11 @@ def _crop_bright_theory(mat, threshold=THEORY_CROP_THRESHOLD):
 if __name__ == '__main__':
     theory_mats, theory_lbls, th_N_eff = build_theory_data(add_noise=True)
 
-    # -- Plot theory matrices before running sweep --
+    # -- Plot theory matrices before running sweep (row-minmax for display) --
     from data import plot_data
-    plot_data(theory_mats, theory_lbls,
+    from foundations import _row_minmax
+    theory_mats_display = {n: _row_minmax(theory_mats[n]) for n in theory_mats}
+    plot_data(theory_mats_display, theory_lbls,
               f'Theory data (Poisson noise, N_eff={th_N_eff})')
 
     # -- Apply column crop --
