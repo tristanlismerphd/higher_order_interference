@@ -1,9 +1,9 @@
 # rank_sweep_exp.py
 # GPT rank sweep on EXPERIMENTAL data.
-# Last change: added EXP_CROP_THRESHOLD to crop dark edge pixels before sweep
-# Files: {slit_idx}_{phase_idx}.txt  (1024x1024 camera frames)
+# Last change: switched to 2026-04-09 dataset (.npy files, phases {0, pi/4, pi/2}^4)
+# Files: {slit_idx}_{phase_idx}.npy  (1024x1024 camera frames)
 # Slit encoding: O=open, X=closed
-# Phase encoding: 81 patterns = {0, pi/2, pi}^4
+# Phase encoding: 81 patterns = {0, pi/4, pi/2}^4
 # Plots the 4 data matrices first, then runs the sweep.
 import os
 import numpy as np
@@ -28,7 +28,7 @@ EXP_CROP_THRESHOLD = 0.0012
 # SET THIS to your local data directory
 DATA_DIR = (
     '/Users/tristan_lismer/Desktop/PhD/Research/'
-    'Higher-order interference/Data/exp_data/newData'
+    'Higher-order interference/Data/exp_data/2026_04_09_3phase_0-pi4-pi2'
 )
 
 # Slit-config index -> (pattern, n_open).  O=open, X=closed.
@@ -47,23 +47,13 @@ for _idx, _pat, _nop in _SLIT_CONFIGS:
         _N_OPEN_TO_SLIT_IDXS.setdefault(_nop, []).append(_idx)
 
 
-def _load_colsum(path):
-    with open(path, 'r') as f:
-        content = f.read()
-    content = content.replace(',\n', '\n').strip()
-    flat = np.fromstring(content.replace('\n', ','), dtype=np.int64, sep=',')
-    n_cols = 1024
-    n_rows = len(flat) // n_cols
-    arr = flat[:n_rows * n_cols].reshape(n_rows, n_cols)
-    col_sum = arr.sum(axis=0).astype(float)
-    return col_sum, float(col_sum.sum())
-
-
 def _load_one_row(data_dir, slit_idx, phase_idx):
-    path = os.path.join(data_dir, f'{slit_idx}_{phase_idx}.txt')
+    path = os.path.join(data_dir, f'{slit_idx}_{phase_idx}.npy')
     if not os.path.exists(path):
         return None, None
-    return _load_colsum(path)
+    frame = np.load(path).astype(float)
+    col_sum = frame.sum(axis=0)
+    return col_sum, float(col_sum.sum())
 
 
 def load_exp_matrices(data_dir=DATA_DIR, n_jobs=-1):
@@ -225,7 +215,7 @@ if __name__ == '__main__':
         gpt_cv, {1: exp_N_eff[1], 2: exp_N_eff[2], 'all': all_N_eff},
         suptitle=(
             f'GPT rank sweep -- Experimental data  |  {_N_FOLDS}-fold CV\n'
-            f'phases: {{0, pi/2, pi}}^4 = 81 patterns  |  '
+            f'phases: {{0, pi/4, pi/2}}^4 = 81 patterns  |  '
             f'u_i[0]=1  |  Dashed: chi2/pt=1'
         ),
     )
