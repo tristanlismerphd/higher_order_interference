@@ -4,8 +4,7 @@
 #  where u_i is a per-row K-vector with u_i[0] = 1.
 #  (K=1-20, 10-fold CV, parallelised)
 #
-#  Last change: reverted CV to random (row,pixel) pairs
-#               (row-fold CV zeroed u_i for test rows -> degenerate test chi2)
+#  Last change: added THEORY_CROP_THRESHOLD; plot theory matrices before sweep
 # ============================================================
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,6 +14,9 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from numpy.linalg import LinAlgError
 from foundations import RANDOM_SEED, ALS_REG
 from data import build_theory_data
+
+# -- Crop threshold: columns where mean intensity < this are dropped -------
+THEORY_CROP_THRESHOLD = 0.05   # set to 0.0 to disable
 
 # -- Sweep parameters --------------------------------------------------
 _K_RANGE_GPT  = range(1, 21)
@@ -269,9 +271,29 @@ def plot_gpt_sweep(cv_dict, mats_N, suptitle):
 
 
 # -- Entry point -------------------------------------------------------
+def _crop_bright_theory(mat, threshold=THEORY_CROP_THRESHOLD):
+    if threshold <= 0.0:
+        return mat
+    bright = mat.mean(axis=0) >= threshold
+    print(f'  Crop: keeping {bright.sum()}/{mat.shape[1]} columns '
+          f'(threshold={threshold})')
+    return mat[:, bright]
+
+
 if __name__ == '__main__':
-    theory_mats, _, th_N_eff = build_theory_data(add_noise=True)
-    theory_mats_N = {n: th_N_eff for n in [1, 2, 3, 4]}
+    theory_mats, theory_lbls, th_N_eff = build_theory_data(add_noise=True)
+
+    # -- Plot theory matrices before running sweep --
+    from data import plot_data
+    plot_data(theory_mats, theory_lbls,
+              f'Theory data (Poisson noise, N_eff={th_N_eff})')
+
+    # -- Apply column crop --
+    if THEORY_CROP_THRESHOLD > 0.0:
+        all_mat_full = np.vstack([theory_mats[n] for n in [1, 2, 3, 4]])
+        bright_mask = all_mat_full.mean(axis=0) >= THEORY_CROP_THRESHOLD
+        print(f'  Common crop mask: {bright_mask.sum()}/{all_mat_full.shape[1]} columns kept')
+        theory_mats = {n: theory_mats[n][:, bright_mask] for n in theory_mats}
 
     gpt_cv = {}
     for n_open in [1, 2]:

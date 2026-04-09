@@ -1,6 +1,6 @@
 # rank_sweep_exp.py
 # GPT rank sweep on EXPERIMENTAL data.
-# Last change: reduced EXP_N_EFF_SCALE 0.1 -> 0.001 to suppress systematics
+# Last change: added EXP_CROP_THRESHOLD to crop dark edge pixels before sweep
 # Files: {slit_idx}_{phase_idx}.txt  (1024x1024 camera frames)
 # Slit encoding: O=open, X=closed
 # Phase encoding: 81 patterns = {0, pi/2, pi}^4
@@ -19,6 +19,10 @@ from rank_sweep_gpt import (
 
 # Scale factor applied to N_eff before fitting (tune to get chi2/pt ~ 1 at true rank)
 EXP_N_EFF_SCALE = 0.001
+
+# Crop threshold: columns where mean intensity across ALL rows < this value are dropped.
+# Set to 0.0 to disable cropping.
+EXP_CROP_THRESHOLD = 0.05
 
 # SET THIS to your local data directory
 DATA_DIR = (
@@ -176,9 +180,26 @@ def plot_exp_sweep(cv_dict, exp_N_eff, suptitle):
     plt.show()
 
 
+def _crop_bright(mat, threshold=EXP_CROP_THRESHOLD):
+    if threshold <= 0.0:
+        return mat
+    mean_col = mat.mean(axis=0)
+    bright = mean_col >= threshold
+    print(f'  Cropping: keeping {bright.sum()}/{len(bright)} columns '
+          f'(threshold={threshold})')
+    return mat[:, bright]
+
+
 if __name__ == '__main__':
     exp_mats, exp_N_eff = load_exp_matrices(DATA_DIR)
     plot_exp_matrices(exp_mats, exp_N_eff)
+    if EXP_CROP_THRESHOLD > 0.0:
+        # Build a common bright mask from the all-configs matrix so every
+        # n_open group uses the same columns
+        all_mat_full = np.vstack([exp_mats[n] for n in [1, 2, 3, 4]])
+        bright_mask = all_mat_full.mean(axis=0) >= EXP_CROP_THRESHOLD
+        print(f'  Common crop mask: {bright_mask.sum()}/1024 columns kept')
+        exp_mats = {n: exp_mats[n][:, bright_mask] for n in exp_mats}
     gpt_cv = {}
     for n_open in [1, 2]:
         gpt_cv[n_open] = run_gpt_rank_sweep(
