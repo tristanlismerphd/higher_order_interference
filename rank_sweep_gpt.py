@@ -16,7 +16,7 @@ from foundations import RANDOM_SEED, ALS_REG
 from data import build_theory_data
 
 # -- Crop threshold: columns where mean intensity < this are dropped -------
-THEORY_CROP_THRESHOLD = 0.05   # set to 0.0 to disable
+THEORY_CROP_THRESHOLD = 0.0   # set to 0.0 to disable
 
 # -- Sweep parameters --------------------------------------------------
 _K_RANGE_GPT  = range(1, 21)
