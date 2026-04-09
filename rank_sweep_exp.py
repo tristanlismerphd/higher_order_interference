@@ -12,10 +12,11 @@ import time
 from joblib import Parallel, delayed
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from rank_sweep_gpt import (
-    gpt_als_fit, run_gpt_rank_sweep, _INSET_KS, _INSET_KS_1SLIT,
+    _INSET_KS, _INSET_KS_1SLIT,
     _K_RANGE_GPT, _N_FOLDS, _poisson_sigma, _resample_cols, N_PX_SWEEP,
     _TABLE_KS, _TABLE_KS_1SLIT, _add_rank_table,
 )
+from rank_sweep_joint import run_gpt_rank_sweep_joint
 
 # Scale factor applied to N_eff before fitting (tune to get chi2/pt ~ 1 at true rank)
 EXP_N_EFF_SCALE = 0.001
@@ -197,25 +198,19 @@ if __name__ == '__main__':
         print(f'  Common crop mask: {bright_mask.sum()}/1024 columns kept')
         exp_mats = {n: exp_mats[n][:, bright_mask] for n in exp_mats}
         plot_exp_matrices(exp_mats, exp_N_eff)
-    gpt_cv = {}
-    for n_open in [1, 2]:
-        gpt_cv[n_open] = run_gpt_rank_sweep(
-            exp_mats[n_open], N_eff=exp_N_eff[n_open] * EXP_N_EFF_SCALE,
-            label=f'Experimental  {n_open}-slit',
-        )
-    all_mat = np.vstack([exp_mats[n] for n in [1, 2, 3, 4]])
-    all_N_eff = float(np.mean(list(exp_N_eff.values())))
-    gpt_cv['all'] = run_gpt_rank_sweep(
-        all_mat, N_eff=all_N_eff * EXP_N_EFF_SCALE,
-        label='Experimental  all-configs',
+    N_eff_scaled = {n: exp_N_eff[n] * EXP_N_EFF_SCALE for n in [1, 2, 3, 4]}
+    gpt_cv = run_gpt_rank_sweep_joint(
+        exp_mats, N_eff_scaled,
+        label='Experimental  all-configs (joint)',
     )
-    exp_N_eff['all'] = all_N_eff
+    all_N_eff = float(np.mean(list(exp_N_eff.values())))
 
     plot_exp_sweep(
-        gpt_cv, {1: exp_N_eff[1], 2: exp_N_eff[2], 'all': all_N_eff},
+        gpt_cv,
+        {1: N_eff_scaled[1], 2: N_eff_scaled[2], 'all': all_N_eff * EXP_N_EFF_SCALE},
         suptitle=(
-            f'GPT rank sweep -- Experimental data  |  {_N_FOLDS}-fold CV\n'
+            f'GPT rank sweep -- Experimental data  |  {_N_FOLDS}-fold CV  |  joint fit\n'
             f'phases: {{0, pi/4, pi/2}}^4 = 81 patterns  |  '
-            f'u_i[0]=1  |  Dashed: chi2/pt=1'
+            f'shared V across all configs  |  Dashed: chi2/pt=1'
         ),
     )
