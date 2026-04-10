@@ -1,6 +1,6 @@
 # rank_sweep_exp.py
 # GPT rank sweep on EXPERIMENTAL data.
-# Last change: switched to 2026-04-09 dataset (.npy files, phases {0, pi/4, pi/2}^4)
+# Last change: added 2026-04-10 emICCD400 dataset; DATA_DIR selects active dataset.
 # Files: {slit_idx}_{phase_idx}.npy  (1024x1024 camera frames)
 # Slit encoding: O=open, X=closed
 # Phase encoding: 81 patterns = {0, pi/4, pi/2}^4
@@ -26,11 +26,15 @@ EXP_N_EFF_SCALE = 0.001
 # Set to 0.0 to disable cropping.
 EXP_CROP_THRESHOLD = 0.0
 
-# SET THIS to your local data directory
+# SET THIS to select the active dataset
 DATA_DIR = (
     '/Users/tristan_lismer/Desktop/PhD/Research/'
-    'Higher-order interference/Data/exp_data/2026_04_09_3phase_0-pi4-pi2'
+    'Higher-order interference/Data/exp_data/2026_04_10_3phase_0-pi4-pi2_emICCD400'
 )
+# DATA_DIR = (
+#     '/Users/tristan_lismer/Desktop/PhD/Research/'
+#     'Higher-order interference/Data/exp_data/2026_04_09_3phase_0-pi4-pi2'
+# )
 
 # Slit-config index -> (pattern, n_open).  O=open, X=closed.
 _SLIT_CONFIGS = [
